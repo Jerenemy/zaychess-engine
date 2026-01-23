@@ -46,7 +46,7 @@ def run_train_epoch(model: AlphaZeroNet, dataloader: DataLoader, device: torch.d
             y_true = batch["value"].to(device).unsqueeze(1)
             loss = F.mse_loss(value_pred, y_true)
         else: 
-            raise Exception
+            raise ValueError("Invalid label, either policy or value")
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
