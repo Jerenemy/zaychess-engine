@@ -3,6 +3,7 @@ import chess
 
 class ActionConverter:
     def __init__(self):
+        """Precompute move-to-index and index-to-move lookup tables."""
         # 1. Define the 8 compass directions (dx, dy)
         # N, NE, E, SE, S, SW, W, NW
         self.queen_dirs = [
@@ -27,6 +28,7 @@ class ActionConverter:
         self._build_mapping()
 
     def _build_mapping(self):
+        """Populate the move mapping tables for all action planes."""
         counter = 0
         
         # We iterate over every possible FROM square (0-63)
@@ -104,6 +106,7 @@ class ActionConverter:
                     counter += 1
 
     def _add_move(self, move, idx):
+        """Record a UCI move string at the given action index."""
         # We store the UCI string for easy lookup
         uci = move.uci()
         if uci not in self.move_to_id:
@@ -111,13 +114,17 @@ class ActionConverter:
             self.id_to_move[idx] = uci
 
     def encode(self, move_uci: str) -> int:
+        """Return the action index for a UCI move string, or None."""
         return self.move_to_id.get(move_uci, None)
 
     def decode(self, idx: int) -> str:
+        """Return the UCI move string for an action index, or None."""
         return self.id_to_move.get(idx, None)
     
     def policy_to_tensor(self, policy_dict):
         """
+        Build a dense probability tensor from visit-count data.
+
         Converts a dictionary of {move_uci: count} to a 4672-length probability array.
         """
         arr = np.zeros(4672, dtype=np.float32)
@@ -137,6 +144,7 @@ converter = ActionConverter()
 
 # Samples a move UCI string from a policy distribution.
 def sample_next_move(move_probs, legal_moves=None):
+    """Sample a UCI move string from a policy distribution."""
     probs = np.asarray(move_probs, dtype=np.float64).flatten()
     if legal_moves is not None:
         legal_moves = list(legal_moves)
@@ -191,6 +199,8 @@ import chess
 
 def board_to_tensor(board: chess.Board):
     """
+    Convert a board into a 12x8x8 float32 tensor with piece planes.
+
     Converts a chess.Board object into a 12x8x8 numpy array (float32).
     Shape: (12 channels, 8 rows, 8 columns)
     """

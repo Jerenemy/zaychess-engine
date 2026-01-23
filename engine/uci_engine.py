@@ -13,11 +13,13 @@ ENGINE_AUTHOR = "Jeremy"
 
 
 def send(msg: str) -> None:
+    """Write a single UCI response line to stdout."""
     sys.stdout.write(msg + "\n")
     sys.stdout.flush()
 
 
 def load_model(checkpoint_path: str | None, device: torch.device) -> AlphaZeroNet:
+    """Load an AlphaZeroNet from an optional checkpoint onto the target device."""
     model = AlphaZeroNet((12, 8, 8), num_actions=4672)
     model.to(device)
     if checkpoint_path:
@@ -32,23 +34,28 @@ def load_model(checkpoint_path: str | None, device: torch.device) -> AlphaZeroNe
 
 class UCIEngine:
     def __init__(self, model: AlphaZeroNet, mcts_steps: int = 200):
+        """Initialize the engine state for a UCI session."""
         self.model = model
         self.mcts_steps = max(1, mcts_steps)
         self.board = chess.Board()
 
     def handle_uci(self) -> None:
+        """Handle the UCI identification handshake."""
         send(f"id name {ENGINE_NAME}")
         send(f"id author {ENGINE_AUTHOR}")
         send("option name MCTS_Steps type spin default 200 min 1 max 10000")
         send("uciok")
 
     def handle_isready(self) -> None:
+        """Respond to UCI readiness checks."""
         send("readyok")
 
     def handle_ucinewgame(self) -> None:
+        """Reset the board for a new game."""
         self.board = chess.Board()
 
     def handle_setoption(self, tokens: list[str]) -> None:
+        """Apply UCI option changes from tokenized input."""
         if "name" not in tokens:
             return
         name_idx = tokens.index("name") + 1
@@ -66,6 +73,7 @@ class UCIEngine:
                 pass
 
     def handle_position(self, tokens: list[str]) -> None:
+        """Set up the board from a UCI position command."""
         if not tokens:
             return
         if tokens[0] == "startpos":
@@ -99,6 +107,7 @@ class UCIEngine:
         self.board = board
 
     def select_best_move(self, board: chess.Board, steps: int) -> str | None:
+        """Run MCTS on the given board and return a chosen move."""
         if board.is_game_over():
             return None
         root = Node(board.copy(), "0000")
@@ -117,6 +126,7 @@ class UCIEngine:
         return random.choice(candidates).associated_move
 
     def handle_go(self, tokens: list[str]) -> None:
+        """Handle a UCI go command and emit the chosen move."""
         steps = self.mcts_steps
         if "nodes" in tokens:
             try:
@@ -136,6 +146,7 @@ class UCIEngine:
 
 
 def main() -> None:
+    """Parse CLI args and run the UCI event loop."""
     parser = argparse.ArgumentParser(description="UCI interface for ZayChessEngine")
     default_device = "cuda" if torch.cuda.is_available() else "cpu"
     parser.add_argument("--checkpoint", default=None, help="path to .pt checkpoint")

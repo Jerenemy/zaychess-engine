@@ -13,6 +13,7 @@ from dataset import ChessDataset, label_data, Buffer
 from utils import converter
 
 def save_checkpoint(model, optimizer, gen, ckpt_dir: Path, epoch=None, buffer_len=None):
+    """Write a checkpoint to disk and return the checkpoint path as a string."""
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     name = f"az_gen_{gen}"
@@ -34,6 +35,7 @@ def save_checkpoint(model, optimizer, gen, ckpt_dir: Path, epoch=None, buffer_le
     return str(path)
 
 def run_train_epoch(model, dataloader, device, optimizer, label="policy"):
+    """Run one training epoch over the dataloader for the selected target label."""
     model.train()
     total_loss = 0.0
     for batch in dataloader:
@@ -58,6 +60,7 @@ def run_train_epoch(model, dataloader, device, optimizer, label="policy"):
     return total_loss / max(1, len(dataloader))
 
 def parse_args():
+    """Parse CLI arguments for training configuration."""
     p = argparse.ArgumentParser()
     p.add_argument("--run-dir", type=str, default="runs/dev")
     p.add_argument("--num-gens", type=int, default=100)
@@ -71,6 +74,7 @@ def parse_args():
     return p.parse_args()
 
 def main():
+    """Entry point for self-play training."""
     args = parse_args()
 
     run_dir = Path(args.run_dir).resolve()
@@ -136,4 +140,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

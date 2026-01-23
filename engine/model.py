@@ -6,6 +6,7 @@ from utils import board_to_tensor
 
 class ResBlock(nn.Module):
     def __init__(self, num_channels):
+        """Initialize a residual block with two 3x3 conv layers."""
         super().__init__()
         # self.dim = num_channels
         
@@ -22,6 +23,7 @@ class ResBlock(nn.Module):
         # why need to define 2 bn's? if theyre both the same? i get the cnn, cause i think it has params that need to be tuned, but why the bn? does that have params to be tuned too?
         
     def forward(self, x):
+        """Apply the residual block to the input tensor."""
         # 1: save the 'residual' (the original input)
         residual = x
         
@@ -46,6 +48,7 @@ class ResBlock(nn.Module):
 
 class AlphaZeroNet(nn.Module):
     def __init__(self, input_shape, num_actions, resblock_dim=256, num_resblocks=10):
+        """Build the AlphaZero-style policy/value network."""
         super().__init__()
 
         self.conv1 = nn.Conv2d(input_shape[0], resblock_dim, kernel_size=3, stride=1, padding=1) #stub
@@ -76,6 +79,7 @@ class AlphaZeroNet(nn.Module):
         # needs to be a resnet structure
         
     def forward(self, x):
+        """Run a forward pass and return policy logits and value."""
         # stem
         x = F.relu(self.bn1(self.conv1(x)))
         
@@ -90,6 +94,8 @@ class AlphaZeroNet(nn.Module):
     
     def predict_value(self, board_state):
         """
+        Run inference for a board state and return (policy_probs, value).
+
         Helper for MCTS: 
         Takes a chess.Board -> Returns a float value (win prob).
         Handles tensor conversion, batch dimension, and GPU movement.

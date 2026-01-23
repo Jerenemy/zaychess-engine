@@ -13,13 +13,16 @@ class ChessDataset(Dataset):
     # dont need a custom collate function since the inputs are the same size 
     # (collate is when have "state": s1, "state": s2, convert to "state": Tensor(s1,s2))
     def __init__(self, entries):
+        """Store a list of (state, policy, value) training entries."""
         self.entries = entries
         pass
     
     def __len__(self):
+        """Return the number of stored entries."""
         return len(self.entries)
     
     def __getitem__(self, idx):
+        """Return a dict of tensors for the indexed training entry."""
         # get raw data tuple
         state_obj, policy, value = self.entries[idx]
         
@@ -44,6 +47,8 @@ class ChessDataset(Dataset):
 
 def label_data(game_data: list[Node,list,None], result_str: str):
     """
+    Convert raw game data into labeled (state, policy, value) tuples.
+
     game_data: list of (node, policy, None)
     result_str: "1-0", "0-1", or "1/2-1/2"
     """
@@ -80,28 +85,26 @@ def label_data(game_data: list[Node,list,None], result_str: str):
 
 class Buffer:
     def __init__(self, maxlen):
+        """Initialize a bounded replay buffer."""
         # maxlen: max num moves to store
         # deque w maxlen automatically handles sliding window logic
         self.memory = deque(maxlen=maxlen)
         
     def add(self, experience: list|tuple):
-        """
-        experience: tuple (state, policy, val) or list of tuples
-        """
+        """Add a single experience or a list of (state, policy, value) tuples."""
         if isinstance(experience, list):
             self.memory.extend(experience)
         else:
             self.memory.append(experience)
      
     def sample_batch(self, batch_size) -> list:
-        """
-        returns random sample of batch_size. if buffer smaller than batch_size, returns entire buffer
-        """
+        """Return a random sample up to batch_size, or the full buffer if smaller."""
         if len(self.memory) < batch_size:
             return list(self.memory)
         return random.sample(self.memory, batch_size)
     
     def __len__(self):
+        """Return the current buffer size."""
         return len(self.memory)
     
     
