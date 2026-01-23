@@ -1,0 +1,6 @@
+*
+!.gitignore
+!README.md
+!zaytrain.sh
+!pyproject.toml
+!engine/
