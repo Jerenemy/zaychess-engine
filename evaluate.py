@@ -3,7 +3,6 @@ import torch
 import random
 import logging
 from abc import ABC, abstractmethod
-from torch import load
 
 from alpha_chess import Config, AlphaZeroNet, MCTS, Node, setup_logger
 
@@ -88,7 +87,7 @@ def main():
     
     model = AlphaZeroNet()
     # FIX: Extract the model weights from the checkpoint dictionary
-    checkpoint = load("checkpoints/az_gen_2_epoch_0.pt", map_location=device)
+    checkpoint = torch.load("checkpoints/az_gen_2_epoch_0.pt", map_location=device)
     model.load_state_dict(checkpoint["model"])
     model.to(device)
     model.eval()
