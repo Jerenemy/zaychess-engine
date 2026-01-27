@@ -61,8 +61,8 @@ num_gens = 6
 num_epochs = 1
 mcts_steps = 5
 
-buffer = Buffer(maxlen=128)
-buffer_batch_size = 64
+buffer = Buffer(maxlen=512)
+buffer_batch_size = 128
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = AlphaZeroNet((12, 8, 8), num_actions=4672)
