@@ -1,11 +1,15 @@
 import chess
 import torch
 import random
+import logging
 from abc import ABC, abstractmethod
-from alpha_chess import Config, AlphaZeroNet, MCTS, Node
 from torch import load
 
+from alpha_chess import Config, AlphaZeroNet, MCTS, Node, setup_logger
+
+
 cfg = Config()
+logger = setup_logger('evaluate', level=logging.INFO)
 
 class Arena:
     def __init__(self, challenger, baseline):
@@ -25,17 +29,31 @@ class Arena:
             else:
                 move = self.baseline.get_move(board)
             board.push(move)
-            
+        # board.result() returns the winner with respect to the player who moved first
         return board.result()
     
+    def _parse_result(self, result, move_first):
+        if move_first:
+            return result
+        else:
+            return "1-0" if result == "0-1" else "0-1" if result == "1-0" else result
+
     def evaluate(self, num_games=10):
-        results = {"1-0": 0, "0-1": 0, "1/2-1/2": 0}
+        results_keys = {"1-0": 0, "0-1": 0, "1/2-1/2": 0, "*": 0}
+        logger.info(f"Evaluating {num_games} games")
+        challenger_win_percentage = 0
         for i in range(num_games):
             # Alternate who goes first
-            result = self.play_game(move_first=(i % 2 == 0))
-            results[result] = results.get(result, 0) + 1
-            print(f"Game {i+1}/{num_games} finished: {result}")
-        return results
+            move_first = i % 2 == 0
+            result = self.play_game(move_first)
+            result = self._parse_result(result, move_first)
+            results_keys[result] = results_keys.get(result, 0) + 1
+            if result == "1-0":
+                challenger_win_percentage += 1
+            logger.info(f"Game {i+1}/{num_games} finished: {result}")
+        logger.info("\nFinal results:")
+        logger.info(results_keys)
+        return challenger_win_percentage / num_games
 
 class Player(ABC):
     def __init__(self, model, device):

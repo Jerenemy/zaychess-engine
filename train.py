@@ -9,19 +9,15 @@ import logging
 from alpha_chess import (
     Config, 
     AlphaZeroNet, 
-    Node, 
-    MCTS,
     Buffer, 
     ChessDataset, 
-    label_data, 
-    converter, 
-    board_to_tensor, 
     setup_logger, 
-    check_memory
+    check_memory,
+    play_one_game
 )
 
 cfg = Config()
-logger = setup_logger('train', level=logging.DEBUG)
+logger = setup_logger('train', level=logging.INFO)
 
 def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
     os.makedirs(cfg.checkpoint_dir, exist_ok=True)
@@ -74,35 +70,18 @@ def main():
     logger.info(f"num_gens: {cfg.num_gens}, num_epochs: {cfg.num_epochs}, mcts_steps: {cfg.mcts_steps}, buffer_size: {buffer.maxlen}, buffer_batch_size: {cfg.buffer_batch_size}\n")
 
     for gen in range(cfg.num_gens):
-        board = chess.Board()
         logger.info(f"Starting generation {gen}")
         check_memory(logger, "Start of Generation") 
         logger.info(f"Buffer length: {len(buffer)}")
-
-        node = Node(board, "0000")
-        new_data = []
-        while not node.is_game_over():
-            mcts = MCTS(node, model)
-            mcts.run(cfg.mcts_steps)
-            # print(f"root visits: {node.visits}. \nChild visits:")
-            # mcts.print_child_visits()
-            # 1. Get raw visit counts from MCTS
-            # format: {'e2e4': 100, 'g1f3': 50}
-            raw_policy = node.get_policy_dict()
-            # 2. convert to tensors
-            # policy:to the len-4672 array
-            # format: [0.0, ..., 0.33]
-            policy_array = converter.policy_to_tensor(raw_policy)
-            # pass only board converted to tensor
-            board_tensor = board_to_tensor(node.state)
-            turn = 1 if node.state.turn == chess.WHITE else -1
-            # 3. store and later add to buffer
-            new_data.append((board_tensor, policy_array, turn, None))
-            node = node.apply_move_from_dist(policy_array)
-        result_str = node.result()
-        logger.info(f"Game result: {result_str} ({len(new_data)} moves)")
-        labeled_data = label_data(new_data, result_str)
-        buffer.add(labeled_data)
+        new_gen_data = []
+        ### play games ###
+        for _ in range(cfg.num_games):
+            new_game_data, result_str, num_moves = play_one_game(model, cfg, device)
+            logger.info(f"Game {gen} | Game result: {result_str} ({num_moves} moves)")
+            new_gen_data.extend(new_game_data)
+        ### end games ###
+        buffer.add(new_gen_data)
+        ### train ###
         raw_batch = buffer.sample_batch(cfg.buffer_batch_size) # list of raw tuples: (s1, p1, v1), (s2, p2, v2), ...
         dataset = ChessDataset(raw_batch)
         train_loader = DataLoader(
@@ -116,7 +95,6 @@ def main():
         for epoch in range(cfg.num_epochs):
             policy_train_loss = run_train_epoch(model, optimizer, train_loader, device, label="policy")
             value_train_loss = run_train_epoch(model, optimizer, train_loader, device, label="value")
-            # print(f"gen {gen}, epoch {epoch}, prob_train_loss: {policy_train_loss}, val_train_loss: {value_train_loss}")
             logger.info(f"Gen {gen} | Epoch {epoch} | Policy Loss: {policy_train_loss:.4f} | Value Loss: {value_train_loss:.4f}")
             last_epoch = epoch
         ckpt_path = save_checkpoint(

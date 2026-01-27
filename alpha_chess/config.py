@@ -3,7 +3,7 @@ from dataclasses import dataclass
 @dataclass
 class Config:
     # Training Hyperparameters
-    num_gens: int = 6
+    num_gens: int = 3
     num_epochs: int = 1
     batch_size: int = 32
     learning_rate: float = 0.01
@@ -18,4 +18,4 @@ class Config:
     
     # Checkpoint Settings
     checkpoint_dir: str = "checkpoints"
-    
+    num_games: int = 2
