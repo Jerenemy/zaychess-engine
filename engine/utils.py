@@ -240,3 +240,18 @@ def board_to_tensor(board: chess.Board):
             tensor[channel, row, col] = 1.0
 
     return tensor
+
+
+import psutil
+import os
+
+def log_memory(logger, step):
+    process = psutil.Process(os.getpid())
+    # Get memory in bytes and convert to Gigabytes
+    mem_gb = process.memory_info().rss / (1024 ** 3) 
+    logger.info(f"Step {step} - Memory Usage: {mem_gb:.2f} GB")
+    
+    # Optional: Crash if we get too close to the limit (e.g., 32GB) to avoid system freeze
+    if mem_gb > 16: 
+        logger.error("MEMORY CRITICAL: Shutting down to save system.")
+        exit(1)

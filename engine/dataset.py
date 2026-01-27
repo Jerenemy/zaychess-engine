@@ -15,7 +15,7 @@ class ChessDataset(Dataset):
     def __init__(self, entries):
         """Store a list of (state, policy, value) training entries."""
         self.entries = entries
-        pass
+
     
     def __len__(self):
         """Return the number of stored entries."""

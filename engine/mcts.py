@@ -1,10 +1,14 @@
 import chess
-import utils
-from model import AlphaZeroNet
 from typing_extensions import Self
 import numpy as np
 
+import utils
+from model import AlphaZeroNet
 from utils import converter
+from logger_config import setup_logger
+
+logger = setup_logger('MCTS', level=logging.DEBUG)
+
 
 class Node:
     def __init__(self, state: chess.Board, associated_move: str):
