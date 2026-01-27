@@ -45,7 +45,7 @@ class ResBlock(nn.Module):
         
 
 class AlphaZeroNet(nn.Module):
-    def __init__(self, input_shape, num_actions, resblock_dim=256, num_resblocks=10):
+    def __init__(self, input_shape=(12, 8, 8), num_actions=4672, resblock_dim=256, num_resblocks=10):
         super().__init__()
 
         self.conv1 = nn.Conv2d(input_shape[0], resblock_dim, kernel_size=3, stride=1, padding=1) #stub

@@ -67,7 +67,7 @@ def main():
     buffer = Buffer(maxlen=cfg.max_buffer_size)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = AlphaZeroNet((12, 8, 8), num_actions=4672)
+    model = AlphaZeroNet()
     model.to(device)
     logger.info(f"using device: {device}")
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
