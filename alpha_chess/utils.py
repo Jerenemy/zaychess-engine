@@ -51,8 +51,10 @@ class ActionConverter:
                         self._add_move(move, counter)
                         
                         # Handle Queen Promotion specifically (UCI uses 'q')
-                        move_q = chess.Move(from_sq, to_sq, promotion=chess.QUEEN)
-                        self._add_move(move_q, counter)
+                        # Only add if it's a valid promotion move to avoid 'e2e4q'
+                        if (rank == 6 and to_rank == 7) or (rank == 1 and to_rank == 0):
+                            move_q = chess.Move(from_sq, to_sq, promotion=chess.QUEEN)
+                            self._add_move(move_q, counter)
                         
                     counter += 1 # Plane used even if move is OOB (to keep shape consistent)
 
@@ -108,7 +110,11 @@ class ActionConverter:
         uci = move.uci()
         if uci not in self.move_to_id:
             self.move_to_id[uci] = idx
-            self.id_to_move[idx] = uci
+            # If it's a promotion move (ends with q/n/b/r), or if idx not yet in id_to_move, store it
+            # This ensures 'e7e8q' is stored instead of 'e7e8' if both map to same index.
+            is_promo = len(uci) == 5 and uci[-1] in 'qnbr'
+            if idx not in self.id_to_move or is_promo:
+                self.id_to_move[idx] = uci
 
     def encode(self, move_uci: str) -> int:
         return self.move_to_id.get(move_uci, None)
