@@ -75,10 +75,11 @@ def main():
         logger.info(f"Buffer length: {len(buffer)}")
         new_gen_data = []
         ### play games ###
-        for _ in range(cfg.num_games):
+        for game in range(cfg.num_games):
             new_game_data, result_str, num_moves = play_one_game(model, cfg, device)
-            logger.info(f"Game {gen} | Game result: {result_str} ({num_moves} moves)")
+            logger.info(f"Game {game} | Game result: {result_str} ({num_moves} moves)")
             new_gen_data.extend(new_game_data)
+            check_memory(logger, f"After game {game}") 
         ### end games ###
         buffer.add(new_gen_data)
         ### train ###
