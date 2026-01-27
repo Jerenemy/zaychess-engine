@@ -83,6 +83,7 @@ class Buffer:
         # maxlen: max num moves to store
         # deque w maxlen automatically handles sliding window logic
         self.memory = deque(maxlen=maxlen)
+        self.maxlen = maxlen
         
     def add(self, experience: list|tuple):
         """

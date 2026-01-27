@@ -1,13 +1,17 @@
 import chess
-import utils
-from model import AlphaZeroNet
 from typing_extensions import Self
 import numpy as np
+import logging
 
+import utils
+from model import AlphaZeroNet
 from utils import converter
+from logger_config import setup_logger
+
 
 class Node:
     def __init__(self, state: chess.Board, associated_move: str):
+        """Create a node for a board state and its incoming move."""
         self.state = state
         self.children: list = []
         self.visits = 0
@@ -18,6 +22,7 @@ class Node:
         # self.player_color = player_color
     
     def get_policy_dict(self, normalized: bool = False) -> dict:
+        """Return a move-to-visits dict, optionally normalized to probabilities."""
         # Map move UCI strings to visit counts for the child nodes.
         policy = {child.associated_move: child.visits for child in self.children}
         if normalized and policy:
@@ -27,10 +32,12 @@ class Node:
         return policy
     
     def apply_move_from_dist(self, next_move_probs) -> Self:
+        """Sample a move from a policy vector and return the resulting child node."""
         next_move_uci = utils.sample_next_move(next_move_probs, self.generate_moves())
         return self._get_child_from_move(next_move_uci)  # Make the move
     
     def _get_child_from_move(self, move_uci: str) -> Self:
+        """Create a child node by applying a move to a copy of this state."""
         move = chess.Move.from_uci(move_uci)
         state_copy = self.state.copy()
         state_copy.push(move)
@@ -38,15 +45,19 @@ class Node:
         return child
         
     def generate_moves(self) -> list:
+        """Return the legal moves from this position."""
         return self.state.legal_moves
     
     def is_game_over(self) -> bool:
+        """Return True if the current state is terminal."""
         return self.state.is_game_over()
     
     def result(self) -> str:
+        """Return the game result string for the current state."""
         return self.state.result()
         
     def expand_children(self) -> None:
+        """Generate child nodes for all legal moves."""
         moves = self.generate_moves()
         # print(moves, type(moves))
         for move in moves:
@@ -56,9 +67,11 @@ class Node:
             self.children.append(child)
     
     def is_leaf(self) -> bool:
+        """Return True if the node has no children."""
         return not self.children
     
     def get_terminal_value(self) -> int:
+        """Return the terminal value from the current player's perspective."""
         # TODO: have gpt implement
         result_str = self.state.result()
         # 1. Determine the global winner
@@ -83,22 +96,26 @@ class Node:
     
     
     def is_terminal(self):
+        """Return True if the game is over for this node."""
         return self.state.is_game_over()
     
 
 
 class MCTS:
     def __init__(self, root: Node, model: AlphaZeroNet):
+        """Initialize the MCTS runner with a root node and policy/value model."""
         self.root = root
         self.model = model
         self.c_puct = 1.0
     
     def run(self, steps):
+        """Run a fixed number of MCTS simulations."""
         for _ in range(steps):
             self.search(self.root)
             
 
     def search(self, node: Node) -> float:
+        """Perform one recursive MCTS search and return the backed-up value."""
         # stop condition: node is a leaf
         if node.is_leaf():
             # here do i want to expand the children? otherwise it's gonna hit this every time. do i expand all of the possible vals?
@@ -132,11 +149,13 @@ class MCTS:
         return -value_from_child
     
     def select_best_child(self, parent: Node) -> Node: 
+        """Select the child with the highest UCB score."""
         best_child = max(parent.children, key=lambda child: self.ucb_score(parent, child))
         # print(type(best_child))
         return best_child
     
     def ucb_score(self, parent: Node, child: Node):
+        """Compute the PUCT UCB score for a child node."""
         # 1. Calculate Q (Exploitation)
         # "Value" from the perspective of the parent. 
         # Since child stores value for the opponent, we flip it.
@@ -152,5 +171,6 @@ class MCTS:
         return q_value + u_score
 
     def print_child_visits(self):
+        """Print visit counts for each child of the root."""
         for child in self.root.children:
             print(f"{child.associated_move}: {child.visits}. ")

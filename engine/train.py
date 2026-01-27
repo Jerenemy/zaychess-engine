@@ -4,13 +4,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import chess
+import logging
 
 from mcts import MCTS, Node
 from model import AlphaZeroNet
 from dataset import ChessDataset, label_data, Buffer
 from utils import converter 
+from logger_config import setup_logger
+from debug_utils import check_memory
 
 CHECKPOINT_DIR = "checkpoints"
+
+logger = setup_logger('train', level=logging.DEBUG)
+
 
 def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
@@ -53,15 +59,14 @@ def run_train_epoch(model: AlphaZeroNet, dataloader: DataLoader, device: torch.d
         total_loss += loss.item()
     return total_loss / len(dataloader)
 
-num_gens = 10
-num_epochs = 5
-mcts_steps = 100
+num_gens = 6
+num_epochs = 1
+mcts_steps = 1
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model = AlphaZeroNet((12, 8, 8), num_actions=4672)
 
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
 
 model.to(device)
 print(f"using device: {device}")
@@ -70,12 +75,18 @@ print(f"using device: {device}")
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
 
 
-buffer = Buffer(maxlen=10000)
-buffer_batch_size = 1024
+buffer = Buffer(maxlen=128)
+buffer_batch_size = 64
 
 board = chess.Board()
 
+logger.info(f"num_gens: {num_gens}, num_epochs: {num_epochs}, mcts_steps: {mcts_steps}, buffer_size: {buffer.maxlen}, buffer_batch_size: {buffer_batch_size}")
+
 for gen in range(num_gens):
+    logger.info(f"Starting generation {gen}")
+    check_memory(logger, "Start of Generation")
+    logger.info(f"Buffer length: {len(buffer)}")
+
     node = Node(board.root(), "0000")
     new_data = []
     while not node.is_game_over():
@@ -96,12 +107,6 @@ for gen in range(num_gens):
     print(result_str)
     labeled_data = label_data(new_data, result_str)
     buffer.add(labeled_data)
-    # only train if we have enough to form a batch
-    # if len(buffer) < batch_size:
-    #     ckpt_path = save_checkpoint(model, optimizer, gen, buffer_len=len(buffer))
-    #     print(f"len(buffer) = {len(buffer)}, less than batch_size = {batch_size}")
-    #     print(f"saved checkpoint: {ckpt_path}")
-    #     continue
     raw_batch = buffer.sample_batch(buffer_batch_size) # list of raw tuples: (s1, p1, v1), (s2, p2, v2), ...
     dataset = ChessDataset(raw_batch)
     train_loader = DataLoader(
@@ -115,7 +120,8 @@ for gen in range(num_gens):
     for epoch in range(num_epochs):
         policy_train_loss = run_train_epoch(model, train_loader, device, label="policy")
         value_train_loss = run_train_epoch(model, train_loader, device, label="value")
-        print(f"gen {gen}, epoch {epoch}, prob_train_loss: {policy_train_loss}, val_train_loss: {value_train_loss}")
+        # print(f"gen {gen}, epoch {epoch}, prob_train_loss: {policy_train_loss}, val_train_loss: {value_train_loss}")
+        logger.info(f"Gen {gen} | Epoch {epoch} | Policy Loss: {policy_train_loss:.4f} | Value Loss: {value_train_loss:.4f}")
         last_epoch = epoch
     ckpt_path = save_checkpoint(
         model,
@@ -124,5 +130,7 @@ for gen in range(num_gens):
         epoch=last_epoch,
         buffer_len=len(buffer),
     )
-    print(f"saved checkpoint: {ckpt_path}")
+    # print(f"saved checkpoint: {ckpt_path}")
+    logger.info(f"Saved checkpoint: {ckpt_path}")
+    check_memory(logger, f"Gen {gen} End")
     
