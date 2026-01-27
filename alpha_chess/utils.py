@@ -185,7 +185,7 @@ def sample_next_move(move_probs, legal_moves=None):
         raise ValueError("No moves available to sample.")
     return move
 
-# %%
+
 import numpy as np
 import chess
 
@@ -245,7 +245,7 @@ def check_memory(logger, step_name):
     process = psutil.Process(os.getpid())
     mem_gb = process.memory_info().rss / (1024 ** 3) # Convert bytes to GB
     
-    logger.info(f"MEM CHECK [{step_name}]: {mem_gb:.2f} GB")
+    logger.debug(f"MEM CHECK [{step_name}]: {mem_gb:.2f} GB")
     
     # Optional: Safety tripwire
     if mem_gb > 16: # Adjust to your RAM limit
