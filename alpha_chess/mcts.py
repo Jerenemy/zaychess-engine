@@ -30,9 +30,9 @@ class Node:
                 policy = {move: visits / total_visits for move, visits in policy.items()}
         return policy
     
-    def apply_move_from_dist(self, next_move_probs) -> Self:
+    def apply_move_from_dist(self, next_move_probs, temperature=1.0) -> Self:
         """Sample a move from a policy vector and return the resulting child node."""
-        next_move_uci = sample_next_move(next_move_probs, self.generate_moves())
+        next_move_uci = sample_next_move(next_move_probs, self.generate_moves(), temperature=temperature)
         return self._get_child_from_move(next_move_uci)  # Make the move
     
     def _get_child_from_move(self, move_uci: str) -> Self:

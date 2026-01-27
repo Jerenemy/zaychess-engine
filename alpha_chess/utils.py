@@ -142,53 +142,44 @@ class ActionConverter:
 converter = ActionConverter()
 
 # Samples a move UCI string from a policy distribution.
-def sample_next_move(move_probs, legal_moves=None):
+def sample_next_move(move_probs, legal_moves=None, temperature=1.0):
     probs = np.asarray(move_probs, dtype=np.float64).flatten()
+    
+    # 1. Mask illegal moves
     if legal_moves is not None:
-        legal_moves = list(legal_moves)
-        moves = []
-        weights = []
+        mask = np.zeros_like(probs)
         for move in legal_moves:
-            uci = str(move)
-            idx = converter.encode(uci)
-            if idx is None:
-                continue
-            weight = probs[idx]
-            if weight > 0:
-                moves.append(uci)
-                weights.append(weight)
-        if moves:
-            weights = np.asarray(weights, dtype=np.float64)
-            total = weights.sum()
-            if total > 0:
-                weights /= total
-                return np.random.choice(moves, p=weights)
-        if legal_moves:
-            return np.random.choice([str(m) for m in legal_moves])
-        raise ValueError("No legal moves available to sample.")
-
+            idx = converter.encode(move.uci())
+            if idx is not None:
+                mask[idx] = 1.0
+        probs *= mask
+        
     total = probs.sum()
     if total <= 0:
-        idx = int(np.argmax(probs)) if probs.size > 0 else None
-        if idx is not None:
-            move = converter.decode(idx)
-            if move is not None:
-                return move
-        for i in range(len(probs)):
-            move = converter.decode(i)
-            if move is not None:
-                return move
+        if legal_moves: # Fallback
+             return list(legal_moves)[0].uci()
         raise ValueError("No moves available to sample.")
-
-    probs /= total
+    
+    probs /= total # Renormalize 1st time
+    
+    # 2. Apply Temperature
+    if temperature == 0:
+        # Greedy: Argmax
+        idx = int(np.argmax(probs))
+        return converter.decode(idx)
+    else:
+        # Avoid numerical instability with very small temperatures (though T=1 is standard)
+        # Taking power: p_i^(1/T)
+        probs = np.power(probs, 1.0 / temperature)
+        probs /= probs.sum() # Renormalize 2nd time
+        
     idx = int(np.random.choice(len(probs), p=probs))
     move = converter.decode(idx)
+    
+    # Safety fallback (shouldn't happen with correct masking)
     if move is None:
-        for j in np.argsort(probs)[::-1]:
-            move = converter.decode(int(j))
-            if move is not None:
-                return move
-        raise ValueError("No moves available to sample.")
+        return converter.decode(int(np.argmax(probs)))
+        
     return move
 
 

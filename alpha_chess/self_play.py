@@ -21,9 +21,15 @@ def play_one_game(model: AlphaZeroNet, cfg: Config, device: device):
         # pass only board converted to tensor
         board_tensor = board_to_tensor(node.state)
         turn = 1 if node.state.turn == chess.WHITE else -1
-        # 3. store and later add to buffer
+        # 3. Determine temperature (T=1 for first N moves, T=0 otherwise)
+        if len(moves) < cfg.temperature_move_threshold:
+            temp = 1.0
+        else:
+            temp = 0.0
+
+        # 4. store and later add to buffer
         moves.append((board_tensor, policy_array, turn, None))
-        node = node.apply_move_from_dist(policy_array)
+        node = node.apply_move_from_dist(policy_array, temperature=temp)
     result_str = node.result()
     # logger.info(f"Game result: {result_str} ({len(new_data)} moves)")
     labeled_data = label_data(moves, result_str)
