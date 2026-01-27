@@ -21,12 +21,11 @@ class ChessDataset(Dataset):
     
     def __getitem__(self, idx):
         # get raw data tuple
-        state_obj, policy, value = self.entries[idx]
+        board, policy, value = self.entries[idx]
         
-        board = state_obj.state if hasattr(state_obj, "state") else state_obj
         # assuming state is already a 12x8x8 numpy array, and convert to tensor
         # if its a python chess board object, need to convert here
-        state_tensor = torch.from_numpy(board_to_tensor(board))
+        state_tensor = torch.from_numpy(board)
         
         # convert policy to tensor: its a prob dist with 4672 vals (all possible moves)
         policy_tensor = torch.tensor(policy, dtype=torch.float32)
@@ -42,7 +41,7 @@ class ChessDataset(Dataset):
         }
     
 
-def label_data(game_data: list[Node,list,None], result_str: str):
+def label_data(game_data: list[chess.Board,list,int,None], result_str: str):
     """
     game_data: list of (node, policy, None)
     result_str: "1-0", "0-1", or "1/2-1/2"
@@ -50,29 +49,29 @@ def label_data(game_data: list[Node,list,None], result_str: str):
     # 1. Determine the global winner
     global_winner = None
     if result_str == "1-0":
-        global_winner = chess.WHITE
+        global_winner = 1 # white
     elif result_str == "0-1":
-        global_winner = chess.BLACK
+        global_winner = -1 # black
     # else "1/2-1/2" implies global_winner is None (Draw)
 
     labeled_data = []
     
     # 2. Assign rewards relative to the player whose turn it was
-    for node, policy, _ in game_data:
+    for board, policy, turn, _ in game_data:
         
         # Case A: Draw
         if global_winner is None:
             z = 0.0
             
         # Case B: The current player matches the winner
-        elif node.state.turn == global_winner:
+        elif turn == global_winner:
             z = 1.0
             
         # Case C: The current player lost
         else:
             z = -1.0
             
-        labeled_data.append((node, policy, z))
+        labeled_data.append((board, policy, z))
         
     return labeled_data
 

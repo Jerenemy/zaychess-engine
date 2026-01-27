@@ -9,14 +9,13 @@ import logging
 from mcts import MCTS, Node
 from model import AlphaZeroNet
 from dataset import ChessDataset, label_data, Buffer
-from utils import converter 
+from utils import converter, board_to_tensor
 from logger_config import setup_logger
 from debug_utils import check_memory
 
 CHECKPOINT_DIR = "checkpoints"
 
 logger = setup_logger('train', level=logging.DEBUG)
-
 
 def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
@@ -36,7 +35,6 @@ def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
         path,
     )
     return path
-
 
 def run_train_epoch(model: AlphaZeroNet, dataloader: DataLoader, device: torch.device, label="policy"):
     model.train()
@@ -61,25 +59,17 @@ def run_train_epoch(model: AlphaZeroNet, dataloader: DataLoader, device: torch.d
 
 num_gens = 6
 num_epochs = 1
-mcts_steps = 1
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-model = AlphaZeroNet((12, 8, 8), num_actions=4672)
-
-
-model.to(device)
-print(f"using device: {device}")
-
-
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
-
+mcts_steps = 5
 
 buffer = Buffer(maxlen=128)
 buffer_batch_size = 64
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = AlphaZeroNet((12, 8, 8), num_actions=4672)
+model.to(device)
+logger.info(f"using device: {device}")
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
 board = chess.Board()
-
 logger.info(f"num_gens: {num_gens}, num_epochs: {num_epochs}, mcts_steps: {mcts_steps}, buffer_size: {buffer.maxlen}, buffer_batch_size: {buffer_batch_size}")
 
 for gen in range(num_gens):
@@ -100,11 +90,13 @@ for gen in range(num_gens):
         # 2. convert to to the len-4672 array
         # format: [0.0, ..., 0.33]
         policy_array = converter.policy_to_tensor(raw_policy)
+        board_tensor = board_to_tensor(node.state)
+        turn = 1 if node.state.turn == chess.WHITE else -1
         # 3. store and later add to buffer
-        new_data.append((node, policy_array, None))
+        new_data.append((board_tensor, policy_array, turn, None))
         node = node.apply_move_from_dist(policy_array)
     result_str = node.result()
-    print(result_str)
+    logger.info(f"Game result: {result_str}")
     labeled_data = label_data(new_data, result_str)
     buffer.add(labeled_data)
     raw_batch = buffer.sample_batch(buffer_batch_size) # list of raw tuples: (s1, p1, v1), (s2, p2, v2), ...
@@ -133,4 +125,4 @@ for gen in range(num_gens):
     # print(f"saved checkpoint: {ckpt_path}")
     logger.info(f"Saved checkpoint: {ckpt_path}")
     check_memory(logger, f"Gen {gen} End")
-    
+    logger.info("\n")
