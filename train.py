@@ -17,7 +17,7 @@ from alpha_chess import (
 )
 
 cfg = Config()
-logger = setup_logger('train', level=logging.INFO)
+logger = setup_logger('train', level=logging.DEBUG)
 
 def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
     os.makedirs(cfg.checkpoint_dir, exist_ok=True)
