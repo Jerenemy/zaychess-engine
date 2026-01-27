@@ -5,8 +5,8 @@ import random
 import chess
 import torch
 
-from mcts import MCTS, Node
-from model import AlphaZeroNet
+from .mcts import MCTS, Node
+from .model import AlphaZeroNet
 
 ENGINE_NAME = "ZayChessEngine"
 ENGINE_AUTHOR = "Jeremy"

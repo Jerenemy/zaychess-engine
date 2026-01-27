@@ -2,4 +2,9 @@
 !.gitignore
 !README.md
 !pyproject.toml
-!engine/
+!*.py
+!alpha_chess/
+!logs/
+!checkpoints/
+!runs/
+!notebooks/

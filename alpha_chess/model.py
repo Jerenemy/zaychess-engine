@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils import board_to_tensor
+from .utils import board_to_tensor
 
 class ResBlock(nn.Module):
     def __init__(self, num_channels):

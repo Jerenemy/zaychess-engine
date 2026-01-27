@@ -6,23 +6,29 @@ from torch.utils.data import DataLoader
 import chess
 import logging
 
-from mcts import MCTS, Node
-from model import AlphaZeroNet
-from dataset import ChessDataset, label_data, Buffer
-from utils import converter, board_to_tensor
-from logger_config import setup_logger
-from debug_utils import check_memory
+from alpha_chess import (
+    Config, 
+    AlphaZeroNet, 
+    Node, 
+    MCTS,
+    Buffer, 
+    ChessDataset, 
+    label_data, 
+    converter, 
+    board_to_tensor, 
+    setup_logger, 
+    check_memory
+)
 
-CHECKPOINT_DIR = "checkpoints"
-
+cfg = Config()
 logger = setup_logger('train', level=logging.DEBUG)
 
 def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
-    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    os.makedirs(cfg.checkpoint_dir, exist_ok=True)
     name = f"az_gen_{gen}"
     if epoch is not None:
         name += f"_epoch_{epoch}"
-    path = os.path.join(CHECKPOINT_DIR, f"{name}.pt")
+    path = os.path.join(cfg.checkpoint_dir, f"{name}.pt")
     torch.save(
         {
             "model": model.state_dict(),
@@ -57,12 +63,8 @@ def run_train_epoch(model: AlphaZeroNet, dataloader: DataLoader, device: torch.d
         total_loss += loss.item()
     return total_loss / len(dataloader)
 
-num_gens = 6
-num_epochs = 1
-mcts_steps = 5
 
-buffer = Buffer(maxlen=512)
-buffer_batch_size = 128
+buffer = Buffer(maxlen=cfg.max_buffer_size)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = AlphaZeroNet((12, 8, 8), num_actions=4672)
@@ -70,18 +72,18 @@ model.to(device)
 logger.info(f"using device: {device}")
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
 board = chess.Board()
-logger.info(f"num_gens: {num_gens}, num_epochs: {num_epochs}, mcts_steps: {mcts_steps}, buffer_size: {buffer.maxlen}, buffer_batch_size: {buffer_batch_size}")
+logger.info(f"num_gens: {cfg.num_gens}, num_epochs: {cfg.num_epochs}, mcts_steps: {cfg.mcts_steps}, buffer_size: {buffer.maxlen}, buffer_batch_size: {cfg.buffer_batch_size}")
 
-for gen in range(num_gens):
+for gen in range(cfg.num_gens):
     logger.info(f"Starting generation {gen}")
-    check_memory(logger, "Start of Generation")
+    check_memory(logger, "Start of Generation") 
     logger.info(f"Buffer length: {len(buffer)}")
 
     node = Node(board.root(), "0000")
     new_data = []
     while not node.is_game_over():
         mcts = MCTS(node, model)
-        mcts.run(mcts_steps)
+        mcts.run(cfg.mcts_steps)
         # print(f"root visits: {node.visits}. \nChild visits:")
         # mcts.print_child_visits()
         # 1. Get raw visit counts from MCTS
@@ -99,17 +101,17 @@ for gen in range(num_gens):
     logger.info(f"Game result: {result_str}")
     labeled_data = label_data(new_data, result_str)
     buffer.add(labeled_data)
-    raw_batch = buffer.sample_batch(buffer_batch_size) # list of raw tuples: (s1, p1, v1), (s2, p2, v2), ...
+    raw_batch = buffer.sample_batch(cfg.buffer_batch_size) # list of raw tuples: (s1, p1, v1), (s2, p2, v2), ...
     dataset = ChessDataset(raw_batch)
     train_loader = DataLoader(
         dataset, 
-        batch_size=32, #mini batch size for gpu
+        batch_size=cfg.batch_size, #mini batch size for gpu
         shuffle=True, #shuffle again to mix up game positions
         num_workers=0, # 0 for debugging, 2-4 for speedup later
         # drop_last=True # optional: drops last batch if less than 32
     )
     last_epoch = None
-    for epoch in range(num_epochs):
+    for epoch in range(cfg.num_epochs):
         policy_train_loss = run_train_epoch(model, train_loader, device, label="policy")
         value_train_loss = run_train_epoch(model, train_loader, device, label="value")
         # print(f"gen {gen}, epoch {epoch}, prob_train_loss: {policy_train_loss}, val_train_loss: {value_train_loss}")
@@ -122,7 +124,6 @@ for gen in range(num_gens):
         epoch=last_epoch,
         buffer_len=len(buffer),
     )
-    # print(f"saved checkpoint: {ckpt_path}")
     logger.info(f"Saved checkpoint: {ckpt_path}")
     check_memory(logger, f"Gen {gen} End")
     logger.info("\n")
