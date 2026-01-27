@@ -10,8 +10,8 @@ from .dataset import label_data
 def play_one_game(model: AlphaZeroNet, cfg: Config, device: device):
     board = chess.Board()
     node = Node(board, "0000")
-    new_data = []
-    while not node.is_game_over():
+    moves = []
+    while not node.is_game_over() and len(moves) < cfg.max_num_moves_per_game:
         mcts = MCTS(node, model)
         mcts.run(cfg.mcts_steps)
         # 1. Get raw visit counts from MCTS (format: {'e2e4': 100, 'g1f3': 50})
@@ -22,9 +22,9 @@ def play_one_game(model: AlphaZeroNet, cfg: Config, device: device):
         board_tensor = board_to_tensor(node.state)
         turn = 1 if node.state.turn == chess.WHITE else -1
         # 3. store and later add to buffer
-        new_data.append((board_tensor, policy_array, turn, None))
+        moves.append((board_tensor, policy_array, turn, None))
         node = node.apply_move_from_dist(policy_array)
     result_str = node.result()
     # logger.info(f"Game result: {result_str} ({len(new_data)} moves)")
-    labeled_data = label_data(new_data, result_str)
-    return labeled_data, result_str, len(new_data)
+    labeled_data = label_data(moves, result_str)
+    return labeled_data, result_str, len(moves)

@@ -29,6 +29,7 @@ class Config:
     # MCTS Settings
     mcts_steps: int = 35
     cpuct: float = 1.0
+    max_num_moves_per_game: int = 200
     
     # Buffer Settings
     max_buffer_size: int = 3500
