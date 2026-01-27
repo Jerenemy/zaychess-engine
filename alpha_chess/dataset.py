@@ -5,10 +5,6 @@ import chess
 import random
 from collections import deque
 
-
-from mcts import Node
-from utils import board_to_tensor
-
 class ChessDataset(Dataset):
     # dont need a custom collate function since the inputs are the same size 
     # (collate is when have "state": s1, "state": s2, convert to "state": Tensor(s1,s2))

@@ -1,12 +1,11 @@
 import chess
 from typing_extensions import Self
 import numpy as np
-import logging
+# import logging
 
-import utils
-from model import AlphaZeroNet
-from utils import converter
-from logger_config import setup_logger
+from .utils import converter, sample_next_move
+from .model import AlphaZeroNet
+# from .logger_config import setup_logger
 
 
 class Node:
@@ -33,7 +32,7 @@ class Node:
     
     def apply_move_from_dist(self, next_move_probs) -> Self:
         """Sample a move from a policy vector and return the resulting child node."""
-        next_move_uci = utils.sample_next_move(next_move_probs, self.generate_moves())
+        next_move_uci = sample_next_move(next_move_probs, self.generate_moves())
         return self._get_child_from_move(next_move_uci)  # Make the move
     
     def _get_child_from_move(self, move_uci: str) -> Self:
