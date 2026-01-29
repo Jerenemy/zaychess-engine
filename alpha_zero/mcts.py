@@ -17,9 +17,8 @@ class Node:
         self.visits = 0
         self.value_sum = 0
         self.associated_move = associated_move
-        self.policy = None
+        self.policy = None # where is this used
         self.prior = 0.0 
-        # self.player_color = player_color
     
     def get_policy_dict(self, normalized: bool = False) -> dict:
         """Return a move-to-visits dict, optionally normalized to probabilities."""
@@ -114,50 +113,52 @@ class MCTS:
     def run(self, steps):
         """Run a fixed number of MCTS simulations."""
         for _ in range(steps):
-            self.search(self.root)
+            self._search(self.root)
             
 
-    def search(self, node: Node) -> float:
+    def _search(self, node: Node) -> float:
         """Perform one recursive MCTS search and return the backed-up value."""
         # stop condition: node is a leaf
-        if node.is_leaf():
-            # here do i want to expand the children? otherwise it's gonna hit this every time. do i expand all of the possible vals?
-            if node.is_terminal():
-                value = node.get_terminal_value()
-                node.visits += 1
-                node.value_sum += value
-                return -value
-            # not terminal state, simply leaf
-            node.expand_children()
-            policy, value = self.model.predict_value(node.state)
+        if not node.is_leaf():
+            best_child = self.select_best_child(node)
+            value_from_child = self._search(best_child)
             
-            # assign priors
-            for child in node.children:
-                move_idx = utils.converter.encode(child.associated_move)
-                if move_idx is not None:
-                    child.prior = policy[move_idx]
-                else:
-                    child.prior = 0.0
-            node.policy = policy
             node.visits += 1
-            node.value_sum += value
-            return -value # return it to the parent (to the parent, since theyre on opp team, our val is neg)
+            node.value_sum += value_from_child
+            
+            return -value_from_child
         
-        best_child = self.select_best_child(node)
-        value_from_child = self.search(best_child)
+        # node is leaf
+        if node.is_terminal():
+            value = node.get_terminal_value()
+            node.visits += 1
+            node.value_sum += value # do i really need to increment this?
+            return -value
+        # not terminal state, simply leaf
+        node.expand_children()
+        policy, value = self.model.predict_value(node.state)
         
+        # assign priors
+        for child in node.children:
+            move_idx = utils.converter.encode(child.associated_move)
+            if move_idx is not None:
+                child.prior = policy[move_idx]
+            else:
+                child.prior = 0.0
+        node.policy = policy
         node.visits += 1
-        node.value_sum += value_from_child
+        node.value_sum += value
+        return -value # return it to the parent (to the parent, since theyre on opp team, our val is neg)
         
-        return -value_from_child
+        
     
     def select_best_child(self, parent: Node) -> Node: 
         """Select the child with the highest UCB score."""
-        best_child = max(parent.children, key=lambda child: self.ucb_score(parent, child))
+        best_child = max(parent.children, key=lambda child: self._ucb_score(parent, child))
         # print(type(best_child))
         return best_child
     
-    def ucb_score(self, parent: Node, child: Node):
+    def _ucb_score(self, parent: Node, child: Node):
         """Compute the PUCT UCB score for a child node."""
         # 1. Calculate Q (Exploitation)
         # "Value" from the perspective of the parent. 

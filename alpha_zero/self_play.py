@@ -24,7 +24,7 @@ def play_one_game(model: AlphaZeroNet, cfg: Config, game_mode='chess'):
         mcts.run(cfg.mcts_steps)
         # 1. Get raw visit counts from MCTS (format: {'e2e4': 100, 'g1f3': 50})
         raw_policy = node.get_policy_dict()
-        # 2. convert to tensors (policy: to the len-4672 array, format: [0.0, ..., 0.33])
+        # 2. convert to tensors (policy: to the len-4672 array (for chess), format: [0.0, ..., 0.33])
         policy_array = utils.converter.policy_to_tensor(raw_policy)
         # pass only board converted to tensor
         board_tensor = board_to_tensor(node.state)
