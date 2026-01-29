@@ -3,13 +3,14 @@ from typing_extensions import Self
 import numpy as np
 # import logging
 
-from .utils import converter, sample_next_move
+from . import utils
+from .utils import sample_next_move
 from .model import AlphaZeroNet
 # from .logger_config import setup_logger
 
 
 class Node:
-    def __init__(self, state: chess.Board, associated_move: str):
+    def __init__(self, state, associated_move: str):
         """Create a node for a board state and its incoming move."""
         self.state = state
         self.children: list = []
@@ -37,9 +38,12 @@ class Node:
     
     def _get_child_from_move(self, move_uci: str) -> Self:
         """Create a child node by applying a move to a copy of this state."""
-        move = chess.Move.from_uci(move_uci)
         state_copy = self.state.copy()
-        state_copy.push(move)
+        if hasattr(state_copy, 'push_uci'):
+            state_copy.push_uci(move_uci)
+        else:
+            move = chess.Move.from_uci(move_uci)
+            state_copy.push(move)
         child = Node(state_copy, move_uci)
         return child
         
@@ -129,7 +133,7 @@ class MCTS:
             
             # assign priors
             for child in node.children:
-                move_idx = converter.encode(child.associated_move)
+                move_idx = utils.converter.encode(child.associated_move)
                 if move_idx is not None:
                     child.prior = policy[move_idx]
                 else:

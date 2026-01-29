@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import chess
-from alpha_chess.utils import sample_next_move, converter
+from alpha_zero.utils import sample_next_move, converter
 
 def test_sample_next_move_temperature_1():
     # Deterministic fallback check for single move

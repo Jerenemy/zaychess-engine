@@ -2,7 +2,7 @@ import pytest
 import chess
 import torch
 import numpy as np
-from alpha_chess.dataset import ChessDataset, Buffer, label_data
+from alpha_zero.dataset import AlphaZeroDataset, Buffer, label_data
 
 def test_label_data_white_wins():
     # Setup: 2 positions, White turn for both, White eventually wins
@@ -66,7 +66,7 @@ def test_chess_dataset():
     entries = [
         (np.zeros((12,8,8), dtype=np.float32), np.ones(4672, dtype=np.float32), 1.0)
     ]
-    dataset = ChessDataset(entries)
+    dataset = AlphaZeroDataset(entries)
     assert len(dataset) == 1
     
     item = dataset[0]

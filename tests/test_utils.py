@@ -1,7 +1,12 @@
 import pytest
 import chess
 import numpy as np
-from alpha_chess.utils import ActionConverter, board_to_tensor, converter
+from alpha_zero.utils import ActionConverter, board_to_tensor, converter, set_game_mode
+
+# Ensure we test in chess mode
+@pytest.fixture(autouse=True)
+def set_chess_mode():
+    set_game_mode('chess')
 
 def test_action_converter_queen_moves():
     # Test a simple vertical move e2e4

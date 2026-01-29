@@ -1,12 +1,10 @@
 import os
 import torch
-import torch.nn as nn
+import logging
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-import chess
-import logging
 
-from alpha_chess import (
+from alpha_zero import (
     Config, 
     AlphaZeroNet, 
     Buffer, 

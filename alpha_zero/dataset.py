@@ -5,12 +5,11 @@ import chess
 import random
 from collections import deque
 
-class ChessDataset(Dataset):
+class AlphaZeroDataset(Dataset):
     # dont need a custom collate function since the inputs are the same size 
     # (collate is when have "state": s1, "state": s2, convert to "state": Tensor(s1,s2))
     def __init__(self, entries):
         self.entries = entries
-        pass
     
     def __len__(self):
         return len(self.entries)
@@ -99,5 +98,4 @@ class Buffer:
     
     def __len__(self):
         return len(self.memory)
-    
     

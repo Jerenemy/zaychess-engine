@@ -1,7 +1,7 @@
 import pytest
 import chess
-from alpha_chess.mcts import Node, MCTS
-from alpha_chess.model import AlphaZeroNet
+from alpha_zero.mcts import Node, MCTS
+from alpha_zero.model import AlphaZeroNet
 
 def test_node_expansion():
     board = chess.Board()
