@@ -19,7 +19,7 @@ class TestTicTacToe(unittest.TestCase):
         
         # Run
         print("Starting TTT game...")
-        labeled_data, result, num_moves = play_one_game(model, cfg, device, game_mode='tictactoe')
+        labeled_data, result, num_moves = play_one_game(model, cfg, game_mode='tictactoe')
         
         print(f"Game finished. Result: {result}, Moves: {num_moves}")
         

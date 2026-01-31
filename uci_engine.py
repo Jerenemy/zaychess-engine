@@ -1,9 +1,10 @@
 import sys
 import argparse
 import logging
-import chess
 import torch
-from alpha_chess import AlphaZeroNet, MCTS, Node, Config
+import chess
+from alpha_zero import AlphaZeroNet, MCTS, Node, Config, set_game_mode
+from alpha_zero.chess_wrapper import Board
 
 # Setup logging
 logging.basicConfig(
@@ -22,6 +23,7 @@ def parse_args():
 
 class UCIEngine:
     def __init__(self, checkpoint_path, mcts_steps, use_cuda):
+        set_game_mode('chess')
         self.mcts_steps = mcts_steps
         self.device = torch.device("cuda" if use_cuda and torch.cuda.is_available() else "cpu")
         logger.info(f"Using device: {self.device}")
@@ -44,7 +46,7 @@ class UCIEngine:
             logger.error(f"Failed to load checkpoint: {e}")
             sys.exit(1)
             
-        self.board = chess.Board()
+        self.board = Board()
 
     def loop(self):
         while True:
@@ -76,7 +78,7 @@ class UCIEngine:
             sys.stdout.flush()
             
         elif cmd == "ucinewgame":
-            self.board = chess.Board()
+            self.board = Board()
             
         elif cmd == "position":
             self._handle_position(tokens)
@@ -90,34 +92,31 @@ class UCIEngine:
     def _handle_position(self, tokens):
         # position [startpos | fen <fen>] [moves <moves>]
         idx = 1
+        if idx >= len(tokens):
+            return
+
         if tokens[idx] == "startpos":
-            self.board = chess.Board()
+            self.board = Board()
             idx += 1
         elif tokens[idx] == "fen":
-            # Fen is usually 6 tokens long? Join until 'moves' or end
             idx += 1
             fen_tokens = []
             while idx < len(tokens) and tokens[idx] != "moves":
                 fen_tokens.append(tokens[idx])
                 idx += 1
             fen = " ".join(fen_tokens)
-            self.board = chess.Board(fen)
+            self.board = Board(chess.Board(fen))
             
         if idx < len(tokens) and tokens[idx] == "moves":
             idx += 1
             for move_uci in tokens[idx:]:
                 try:
-                    move = chess.Move.from_uci(move_uci)
-                    if move in self.board.legal_moves:
-                        self.board.push(move)
-                    else:
-                        logger.error(f"Illegal move received: {move_uci}")
+                    self.board.push(move_uci)
                 except ValueError:
                     logger.error(f"Invalid move format: {move_uci}")
 
     def _handle_go(self, tokens):
         # We ignore time controls for now and just use fixed nodes
-        # In a real engine, we'd parse wtime/btime/movetime
         
         # Create MCTS root from current board
         # Dummy move "0000" for root
@@ -130,7 +129,6 @@ class UCIEngine:
         # Get best move (most visited)
         policy = root.get_policy_dict()
         if not policy:
-            # Fallback if no moves? (Game over or 0 steps)
             if self.board.legal_moves:
                 best_move = list(self.board.legal_moves)[0]
                 print(f"bestmove {best_move.uci()}")

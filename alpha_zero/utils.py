@@ -99,6 +99,10 @@ class ChessActionConverter:
                 self.id_to_move[idx] = uci
 
     def encode(self, move_uci: str) -> Optional[int]:
+        if hasattr(move_uci, 'uci'):
+            move_uci = move_uci.uci()
+        else:
+            move_uci = str(move_uci)
         return self.move_to_id.get(move_uci, None)
 
     def decode(self, idx: int) -> Optional[str]:
