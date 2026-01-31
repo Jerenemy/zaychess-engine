@@ -8,7 +8,7 @@ from alpha_zero import (
     Config, 
     AlphaZeroNet, 
     Buffer, 
-    ChessDataset, 
+    AlphaZeroDataset, 
     setup_logger, 
     check_memory,
     play_one_game
@@ -73,7 +73,7 @@ def main():
         logger.info(f"Buffer length: {len(buffer)}")
         new_gen_data = []
         ### play games ###
-        for game in range(cfg.num_games):
+        for game in range(cfg.num_games_per_gen):
             new_game_data, result_str, num_moves = play_one_game(model, cfg, game_mode='chess')
             logger.info(f"Game {game} | Game result: {result_str} ({num_moves} moves)")
             new_gen_data.extend(new_game_data)
@@ -82,7 +82,7 @@ def main():
         buffer.add(new_gen_data)
         ### train ###
         raw_batch = buffer.sample_batch(cfg.buffer_batch_size) # list of raw tuples: (s1, p1, v1), (s2, p2, v2), ...
-        dataset = ChessDataset(raw_batch)
+        dataset = AlphaZeroDataset(raw_batch)
         train_loader = DataLoader(
             dataset, 
             batch_size=cfg.batch_size, #mini batch size for gpu

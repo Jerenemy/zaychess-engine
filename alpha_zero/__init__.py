@@ -2,7 +2,7 @@ __all__ = [
     "AlphaZeroNet",
     "MCTS",
     "Node",
-    "ChessDataset",
+    "AlphaZeroDataset",
     "Buffer",
     "uci_engine",
     "Config",
