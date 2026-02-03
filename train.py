@@ -11,7 +11,8 @@ from alpha_zero import (
     AlphaZeroDataset, 
     setup_logger, 
     check_memory,
-    play_one_game
+    play_one_game,
+    ChessAdapter
 )
 
 cfg = Config()
@@ -74,7 +75,7 @@ def main():
         new_gen_data = []
         ### play games ###
         for game in range(cfg.num_games_per_gen):
-            new_game_data, result_str, num_moves = play_one_game(model, cfg, game_mode='chess')
+            new_game_data, result_str, num_moves = play_one_game(model, cfg, adapter=ChessAdapter())
             logger.info(f"Game {game} | Game result: {result_str} ({num_moves} moves)")
             new_gen_data.extend(new_game_data)
             check_memory(logger, f"After game {game}") 

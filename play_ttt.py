@@ -1,6 +1,7 @@
 import torch
 import logging
-from alpha_zero import Config, AlphaZeroNet, MCTS, Node, setup_logger, set_game_mode
+from alpha_zero import Config, AlphaZeroNet, MCTS, Node, setup_logger
+from alpha_zero.game_adapter import TicTacToeAdapter
 from alpha_zero import tictactoe as ttt
 
 # Reuse MCTSPlayer from evaluate.py logic or redefine it here since evaluate is not a package
@@ -16,10 +17,11 @@ class MCTSPlayer:
     def __init__(self, model, device):
         self.model = model
         self.device = device
+        self.adapter = TicTacToeAdapter()
     
     def get_move(self, board):
         node = Node(board, "0000")
-        mcts = MCTS(node, self.model)
+        mcts = MCTS(node, self.model, self.adapter)
         # Use more steps for better play
         mcts.run(cfg.mcts_steps * 4) 
         
@@ -54,7 +56,10 @@ class HumanPlayer:
 
 def main():
     game_mode = 'tictactoe'
-    set_game_mode(game_mode)
+    if game_mode == 'tictactoe':
+        adapter = TicTacToeAdapter()
+    # elif game_mode == 'chess':
+    #     adapter = ChessAdapter()
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     

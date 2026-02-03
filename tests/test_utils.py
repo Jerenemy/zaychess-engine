@@ -1,14 +1,9 @@
-import pytest
 import chess
 import numpy as np
-from alpha_zero.utils import ActionConverter, board_to_tensor, converter, set_game_mode
-
-# Ensure we test in chess mode
-@pytest.fixture(autouse=True)
-def set_chess_mode():
-    set_game_mode('chess')
+from alpha_zero.utils import ChessActionConverter, chess_board_to_tensor
 
 def test_action_converter_queen_moves():
+    converter = ChessActionConverter()
     # Test a simple vertical move e2e4
     idx = converter.encode("e2e4")
     assert idx is not None
@@ -21,12 +16,14 @@ def test_action_converter_queen_moves():
     assert converter.decode(idx_q) == "e7e8q"
 
 def test_action_converter_knight_moves():
+    converter = ChessActionConverter()
     # Test a knight jump g1f3
     idx = converter.encode("g1f3")
     assert idx is not None
     assert converter.decode(idx) == "g1f3"
 
 def test_action_converter_underpromotions():
+    converter = ChessActionConverter()
     # Test a knight promotion e7e8n
     idx_n = converter.encode("e7e8n")
     assert idx_n is not None
@@ -34,7 +31,7 @@ def test_action_converter_underpromotions():
 
 def test_board_to_tensor_initial():
     board = chess.Board()
-    tensor = board_to_tensor(board)
+    tensor = chess_board_to_tensor(board)
     assert tensor.shape == (12, 8, 8)
     
     # White pawn at A2 (rank 1, file 0)
@@ -49,10 +46,11 @@ def test_board_to_tensor_initial():
 
 def test_board_to_tensor_empty():
     board = chess.Board(None) # Empty board
-    tensor = board_to_tensor(board)
+    tensor = chess_board_to_tensor(board)
     assert np.sum(tensor) == 0.0
 
 def test_policy_to_tensor():
+    converter = ChessActionConverter()
     policy_dict = {"e2e4": 10, "d2d4": 10}
     tensor = converter.policy_to_tensor(policy_dict)
     assert tensor.shape == (4672,)

@@ -3,7 +3,7 @@ import argparse
 import logging
 import torch
 import chess
-from alpha_zero import AlphaZeroNet, MCTS, Node, Config, set_game_mode
+from alpha_zero import AlphaZeroNet, MCTS, Node, Config, ChessAdapter
 from alpha_zero.chess_wrapper import Board
 
 # Setup logging
@@ -23,10 +23,10 @@ def parse_args():
 
 class UCIEngine:
     def __init__(self, checkpoint_path, mcts_steps, use_cuda):
-        set_game_mode('chess')
         self.mcts_steps = mcts_steps
         self.device = torch.device("cuda" if use_cuda and torch.cuda.is_available() else "cpu")
         logger.info(f"Using device: {self.device}")
+        self.adapter = ChessAdapter()
         
         # Load Model
         self.model = AlphaZeroNet()
@@ -46,7 +46,7 @@ class UCIEngine:
             logger.error(f"Failed to load checkpoint: {e}")
             sys.exit(1)
             
-        self.board = Board()
+        self.board = self.adapter.new_board()
 
     def loop(self):
         while True:
@@ -96,7 +96,7 @@ class UCIEngine:
             return
 
         if tokens[idx] == "startpos":
-            self.board = Board()
+            self.board = self.adapter.new_board()
             idx += 1
         elif tokens[idx] == "fen":
             idx += 1
@@ -121,7 +121,7 @@ class UCIEngine:
         # Create MCTS root from current board
         # Dummy move "0000" for root
         root = Node(self.board, "0000")
-        mcts = MCTS(root, self.model)
+        mcts = MCTS(root, self.model, self.adapter)
         
         # Run search
         mcts.run(self.mcts_steps)

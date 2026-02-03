@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .utils import board_to_tensor
-
 class ResBlock(nn.Module):
     def __init__(self, num_channels):
         super().__init__()
@@ -88,19 +86,21 @@ class AlphaZeroNet(nn.Module):
         value = self.value_head(x)
         return policy_logits, value
     
-    def predict_value(self, board_state):
+    def predict_value(self, board_state, board_to_tensor_fn):
         """
         Helper for MCTS: 
         Takes a chess.Board -> Returns a float value (win prob).
         Handles tensor conversion, batch dimension, and GPU movement.
         """
+        if board_to_tensor_fn is None:
+            raise ValueError("board_to_tensor_fn must be provided.")
         # 1. Switch to eval mode (disables BatchNorm tracking/Dropout)
         self.eval()
         
         # 2. No gradients needed for inference (saves memory/speed)
         with torch.no_grad():
             # Convert Board -> Numpy -> Tensor
-            tensor_input = torch.from_numpy(board_to_tensor(board_state))
+            tensor_input = torch.from_numpy(board_to_tensor_fn(board_state))
             
             # Add Batch Dimension (12, 8, 8) -> (1, 12, 8, 8)
             tensor_input = tensor_input.unsqueeze(0)

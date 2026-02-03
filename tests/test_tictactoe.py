@@ -7,7 +7,7 @@ import unittest
 from alpha_zero.self_play import play_one_game
 from alpha_zero.model import AlphaZeroNet
 from alpha_zero.config import Config
-from alpha_zero.utils import set_game_mode
+from alpha_zero.game_adapter import TicTacToeAdapter
 
 class TestTicTacToe(unittest.TestCase):
     def test_play_one_game_ttt(self):
@@ -19,7 +19,7 @@ class TestTicTacToe(unittest.TestCase):
         
         # Run
         print("Starting TTT game...")
-        labeled_data, result, num_moves = play_one_game(model, cfg, game_mode='tictactoe')
+        labeled_data, result, num_moves = play_one_game(model, cfg, adapter=TicTacToeAdapter())
         
         print(f"Game finished. Result: {result}, Moves: {num_moves}")
         

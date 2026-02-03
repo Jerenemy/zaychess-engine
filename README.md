@@ -100,6 +100,5 @@ pytest -q
 
 ## Notes
 
-- `alpha_zero.utils.set_game_mode(...)` switches global converters/tensorizers; running chess and tic-tac-toe in the same process without explicit resets can cause confusion.
+- Adapters (`ChessAdapter`, `TicTacToeAdapter`) provide converters/tensorizers; avoid global game-mode state.
 - Checkpoints are written under `checkpoints/` and logs under `logs/` by default.
-

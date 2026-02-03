@@ -2,8 +2,9 @@ import torch
 import logging
 from torch.utils.data import DataLoader
 
-from alpha_zero import Config, AlphaZeroNet, play_one_game, AlphaZeroDataset, Buffer, logger_config
+from alpha_zero import Config, AlphaZeroNet, play_one_game, AlphaZeroDataset, Buffer, logger_config, TicTacToeAdapter
 from training_utils import run_train_epoch, save_checkpoint
+
 
 cfg = Config()
 logger = logger_config.setup_logger(name='train_ttt', level=logging.DEBUG)
@@ -18,7 +19,7 @@ for gen in range(cfg.num_gens):
     gen_data = []
     # play games
     for game in range(cfg.num_games_per_gen):
-        game_data, _, _ = play_one_game(model, cfg, game_mode='tictactoe')
+        game_data, _, _ = play_one_game(model, cfg, adapter=TicTacToeAdapter())
         gen_data.extend(game_data)
     # add to buffer
     buffer.add(gen_data)

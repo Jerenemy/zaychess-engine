@@ -4,7 +4,8 @@ import random
 import logging
 from abc import ABC, abstractmethod
 
-from alpha_zero import Config, AlphaZeroNet, MCTS, Node, setup_logger, set_game_mode
+from alpha_zero import Config, AlphaZeroNet, MCTS, Node, setup_logger
+from alpha_zero.game_adapter import ChessAdapter, TicTacToeAdapter
 from alpha_zero import chess_wrapper as cw
 from alpha_zero import tictactoe as ttt
 
@@ -72,6 +73,7 @@ class Player(ABC):
         self.model = model
         self.device = device
         self.game_lib = cw if game_mode == 'chess' else ttt
+        self.adapter = ChessAdapter() if game_mode == 'chess' else TicTacToeAdapter()
     
     @abstractmethod
     def get_move(self, board):
@@ -88,7 +90,7 @@ class MCTSPlayer(Player):
         node = Node(board, "0000")
         
         # 2. Run MCTS
-        mcts = MCTS(node, self.model)
+        mcts = MCTS(node, self.model, self.adapter)
         mcts.run(cfg.mcts_steps)
         
         # 3. Pick the move with the most visits
@@ -101,7 +103,6 @@ def main():
     
     checkpoint = torch.load("checkpoints/az_gen_9_epoch_0.pt", map_location=device)
     game_mode = 'tictactoe' # 'chess' or 'tictactoe'
-    set_game_mode(game_mode)
     if game_mode == 'tictactoe':
         model = AlphaZeroNet(input_shape=(2, 3, 3), num_actions=9, num_resblocks=5)
     else:
@@ -118,4 +119,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -13,7 +13,6 @@ class TestUCIEngine(unittest.TestCase):
         # Patch init to avoid loading model/device
         with patch('uci_engine.AlphaZeroNet'), \
              patch('torch.load'), \
-             patch('uci_engine.set_game_mode'), \
              patch('uci_engine.logger'):
             self.engine = UCIEngine("dummy_ckpt", 10, False)
             # Mock the model behavior

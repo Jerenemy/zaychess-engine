@@ -197,42 +197,26 @@ def tictactoe_board_to_tensor(board):
     return tensor
 
 
-# --- Global Instances / Switcher ---
-_current_game = "chess"
-_converters = {
-    "chess": ChessActionConverter(),
-    "tictactoe": TicTacToeActionConverter()
-}
-_tensor_funcs = {
-    "chess": chess_board_to_tensor,
-    "tictactoe": tictactoe_board_to_tensor
-}
-
-# The main export that others use
-converter: ActionConverter = _converters["chess"]
-
-def board_to_tensor(board):
-    return _tensor_funcs[_current_game](board)
-
-def set_game_mode(mode: str):
-    global _current_game, converter
-    if mode not in _converters:
-        raise ValueError(f"Unknown game mode: {mode}")
-    _current_game = mode
-    converter = _converters[mode]
-
-
 # --- Common Utils ---
 
-def sample_next_move(move_probs, legal_moves=None, temperature=1.0):
+def sample_next_move(
+    move_probs,
+    legal_moves=None,
+    temperature=1.0,
+    encode_move=None,
+    decode_move=None,
+):
     probs = np.asarray(move_probs, dtype=np.float64).flatten()
+
+    if encode_move is None or decode_move is None:
+        raise ValueError("encode_move and decode_move must be provided.")
     
     if legal_moves is not None:
         mask = np.zeros_like(probs)
         for move in legal_moves:
             # handle both chess.Move and TTT Move (which has uci())
             uci = move.uci() if hasattr(move, 'uci') else str(move)
-            idx = converter.encode(uci)
+            idx = encode_move(uci)
             if idx is not None:
                 mask[idx] = 1.0
         probs *= mask
@@ -247,16 +231,16 @@ def sample_next_move(move_probs, legal_moves=None, temperature=1.0):
     
     if temperature == 0:
         idx = int(np.argmax(probs))
-        return converter.decode(idx)
+        return decode_move(idx)
     else:
         probs = np.power(probs, 1.0 / temperature)
         probs /= probs.sum() 
         
     idx = int(np.random.choice(len(probs), p=probs))
-    move = converter.decode(idx)
+    move = decode_move(idx)
     
     if move is None:
-        return converter.decode(int(np.argmax(probs)))
+        return decode_move(int(np.argmax(probs)))
     return move
 
 import sys

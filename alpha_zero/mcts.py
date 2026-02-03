@@ -1,11 +1,10 @@
-import chess
 from typing_extensions import Self
 import numpy as np
 # import logging
 
-from . import utils
 from .utils import sample_next_move
 from .model import AlphaZeroNet
+from .game_adapter import GameAdapter
 # from .logger_config import setup_logger
 
 
@@ -30,9 +29,27 @@ class Node:
                 policy = {move: visits / total_visits for move, visits in policy.items()}
         return policy
     
-    def apply_move_from_dist(self, next_move_probs, temperature=1.0) -> Self:
+    def apply_move_from_dist(
+        self,
+        next_move_probs,
+        legal_moves,
+        temperature=1.0,
+        encode_move=None,
+        decode_move=None,
+        child_factory=None,
+    ) -> Self:
         """Sample a move from a policy vector and return the resulting child node."""
-        next_move_uci = sample_next_move(next_move_probs, self.generate_moves(), temperature=temperature)
+        if legal_moves is None:
+            raise ValueError("legal_moves must be provided for sampling.")
+        next_move_uci = sample_next_move(
+            next_move_probs,
+            legal_moves,
+            temperature=temperature,
+            encode_move=encode_move,
+            decode_move=decode_move,
+        )
+        if child_factory is not None:
+            return child_factory(self, next_move_uci)
         return self._get_child_from_move(next_move_uci)  # Make the move
     
     def _get_child_from_move(self, move_uci: str) -> Self:
@@ -41,73 +58,76 @@ class Node:
         if hasattr(state_copy, 'push_uci'):
             state_copy.push_uci(move_uci)
         else:
-            move = chess.Move.from_uci(move_uci)
-            state_copy.push(move)
+            state_copy.push(move_uci)
         child = Node(state_copy, move_uci)
         return child
         
-    def generate_moves(self) -> list:
-        """Return the legal moves from this position."""
-        return self.state.legal_moves
+    # def generate_moves(self) -> list:
+    #     """Return the legal moves from this position."""
+    #     # return self.state.legal_moves
+    #     self.adapter.legal_moves(self.state)
     
-    def is_game_over(self) -> bool:
-        """Return True if the current state is terminal."""
-        return self.state.is_game_over()
+    # def is_game_over(self) -> bool:
+    #     """Return True if the current state is terminal."""
+    #     return self.state.is_game_over() #TODO: either doesnt have this logic or needs adapter
     
     def result(self) -> str:
         """Return the game result string for the current state."""
         return self.state.result()
         
-    def expand_children(self) -> None:
+    def expand_children(self, moves, child_factory=None) -> None:
         """Generate child nodes for all legal moves."""
-        moves = self.generate_moves()
-        # print(moves, type(moves))
+        if moves is None:
+            raise ValueError("moves must be provided when expanding children.")
         for move in moves:
-            # print(move)
-            move_str = str(move)
-            child = self._get_child_from_move(move_str)
+            if child_factory is not None:
+                child = child_factory(self, move)
+            else:
+                move_str = move.uci() if hasattr(move, 'uci') else str(move)
+                child = self._get_child_from_move(move_str)
             self.children.append(child)
     
     def is_leaf(self) -> bool:
         """Return True if the node has no children."""
         return not self.children
     
-    def get_terminal_value(self) -> int:
-        """Return the terminal value from the current player's perspective."""
-        # TODO: have gpt implement
-        result_str = self.state.result()
-        # 1. Determine the global winner
-        global_winner = None
-        if result_str == "1-0":
-            global_winner = chess.WHITE
-        elif result_str == "0-1":
-            global_winner = chess.BLACK
-        # else "1/2-1/2" implies global_winner is None (Draw)
-        # Case A: Draw
-        if global_winner is None:
-            z = 0.0
+    # def get_terminal_value(self) -> int:
+    #     """Return the terminal value from the current player's perspective."""
+    #     # TODO: have gpt implement
+    #     result_str = self.state.result()
+    #     # 1. Determine the global winner
+    #     global_winner = None
+    #     if result_str == "1-0":
+    #         global_winner = chess.WHITE
+    #     elif result_str == "0-1":
+    #         global_winner = chess.BLACK
+    #     # else "1/2-1/2" implies global_winner is None (Draw)
+    #     # Case A: Draw
+    #     if global_winner is None:
+    #         z = 0.0
             
-        # Case B: The current player matches the winner
-        elif self.state.turn == global_winner:
-            z = 1.0
+    #     # Case B: The current player matches the winner
+    #     elif self.state.turn == global_winner:
+    #         z = 1.0
             
-        # Case C: The current player lost
-        else:
-            z = -1.0
-        return z
+    #     # Case C: The current player lost
+    #     else:
+    #         z = -1.0
+    #     return z
     
     
-    def is_terminal(self):
-        """Return True if the game is over for this node."""
-        return self.state.is_game_over()
+    # def is_terminal(self):
+    #     """Return True if the game is over for this node."""
+    #     return self.state.is_game_over()
     
 
 
 class MCTS:
-    def __init__(self, root: Node, model: AlphaZeroNet):
+    def __init__(self, root: Node, model: AlphaZeroNet, adapter: GameAdapter):
         """Initialize the MCTS runner with a root node and policy/value model."""
         self.root = root
         self.model = model
+        self.adapter = adapter
         self.c_puct = 1.0
     
     def run(self, steps):
@@ -129,18 +149,22 @@ class MCTS:
             return -value_from_child
         
         # node is leaf
-        if node.is_terminal():
-            value = node.get_terminal_value()
+        if self.is_terminal(node):
+            value = self.get_terminal_value(node)
             node.visits += 1
             node.value_sum += value # do i really need to increment this?
             return -value
         # not terminal state, simply leaf
-        node.expand_children()
-        policy, value = self.model.predict_value(node.state)
+        self.expand_children(node)
+        policy, value = self.model.predict_value(
+            node.state,
+            board_to_tensor_fn=self.adapter.board_to_tensor,
+        )
         
         # assign priors
         for child in node.children:
-            move_idx = utils.converter.encode(child.associated_move)
+            move_idx = self.adapter.encode_move(child.associated_move)
+            # move_idx = utils.converter.encode(child.associated_move) #TODO: change to adapter
             if move_idx is not None:
                 child.prior = policy[move_idx]
             else:
@@ -173,6 +197,34 @@ class MCTS:
         u_score = self.c_puct * child.prior * (np.sqrt(parent.visits) / (1 + child.visits))
         
         return q_value + u_score
+
+    def get_terminal_value(self, node) -> int:
+        """Return the terminal value from the current player's perspective."""
+        return self.adapter.terminal_value(node.state)
+
+    def _create_child(self, parent: Node, move) -> Node:
+        """Create a child node by applying a move to a copied board."""
+        state_copy = self.adapter.copy_board(parent.state)
+        self.adapter.push(state_copy, move)
+        move_uci = move.uci() if hasattr(move, 'uci') else str(move)
+        return Node(state_copy, move_uci)
+
+    def generate_moves(self, node) -> list:
+        """Return the legal moves from this position."""
+        return list(self.adapter.legal_moves(node.state))
+
+    def expand_children(self, node: Node) -> None:
+        """Expand a node using adapter-generated legal moves."""
+        moves = self.generate_moves(node)
+        node.expand_children(moves, child_factory=self._create_child)
+    
+    # def is_game_over(self, state) -> bool:
+    #     """Return True if the current state is terminal."""
+    #     return self.state.is_game_over() #TODO: either doesnt have this logic or needs adapter
+    
+    def is_terminal(self, node):
+        """Return True if the game is over for this node."""
+        return self.adapter.is_terminal(node.state)
 
     def print_child_visits(self):
         """Print visit counts for each child of the root."""
