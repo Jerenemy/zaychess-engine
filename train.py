@@ -9,21 +9,18 @@ from alpha_zero import (
     AlphaZeroNet, 
     Buffer, 
     AlphaZeroDataset, 
-    setup_logger, 
     check_memory,
     play_one_game,
     ChessAdapter
 )
+from alpha_zero.logger_config import setup_logger
 
-cfg = Config()
-logger = setup_logger('train', level=logging.DEBUG)
-
-def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
-    os.makedirs(cfg.checkpoint_dir, exist_ok=True)
+def save_checkpoint(model, optimizer, gen, checkpoint_dir, epoch=None, buffer_len=None, num_actions=4672):
+    os.makedirs(checkpoint_dir, exist_ok=True)
     name = f"az_gen_{gen}"
     if epoch is not None:
         name += f"_epoch_{epoch}"
-    path = os.path.join(cfg.checkpoint_dir, f"{name}.pt")
+    path = os.path.join(checkpoint_dir, f"{name}.pt")
     torch.save(
         {
             "model": model.state_dict(),
@@ -31,7 +28,7 @@ def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
             "gen": gen,
             "epoch": epoch,
             "buffer_len": buffer_len,
-            "num_actions": 4672,
+            "num_actions": num_actions,
         },
         path,
     )
@@ -59,6 +56,8 @@ def run_train_epoch(model: AlphaZeroNet, optimizer: torch.optim.Optimizer, datal
     return total_loss / len(dataloader)
 
 def main():
+    cfg = Config()
+    logger = setup_logger('train', level=logging.DEBUG)
     buffer = Buffer(maxlen=cfg.max_buffer_size)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -75,7 +74,12 @@ def main():
         new_gen_data = []
         ### play games ###
         for game in range(cfg.num_games_per_gen):
-            new_game_data, result_str, num_moves = play_one_game(model, cfg, adapter=ChessAdapter())
+            new_game_data, result_str, num_moves = play_one_game(
+                model,
+                cfg,
+                adapter=ChessAdapter(),
+                logger=logger,
+            )
             logger.info(f"Game {game} | Game result: {result_str} ({num_moves} moves)")
             new_gen_data.extend(new_game_data)
             check_memory(logger, f"After game {game}") 
@@ -101,8 +105,10 @@ def main():
             model,
             optimizer,
             gen,
+            cfg.checkpoint_dir,
             epoch=last_epoch,
             buffer_len=len(buffer),
+            num_actions=4672,
         )
         logger.info(f"Saved checkpoint: {ckpt_path}")
         check_memory(logger, f"Gen {gen} End")

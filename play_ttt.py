@@ -1,6 +1,5 @@
 import torch
-import logging
-from alpha_zero import Config, AlphaZeroNet, MCTS, Node, setup_logger
+from alpha_zero import Config, AlphaZeroNet, MCTS, Node
 from alpha_zero.game_adapter import TicTacToeAdapter
 from alpha_zero import tictactoe as ttt
 
@@ -9,21 +8,18 @@ from alpha_zero import tictactoe as ttt
 # evaluate.py is a script, not easily importable without running main. 
 # I will copy the MCTSPlayer logic here for simplicity.
 
-cfg = Config()
-# Set logging to critical to avoid MCTS spam during play
-logger = setup_logger('play_ttt', level=logging.CRITICAL)
-
 class MCTSPlayer:
-    def __init__(self, model, device):
+    def __init__(self, model, device, mcts_steps):
         self.model = model
         self.device = device
         self.adapter = TicTacToeAdapter()
+        self.mcts_steps = mcts_steps
     
     def get_move(self, board):
         node = Node(board, "0000")
         mcts = MCTS(node, self.model, self.adapter)
         # Use more steps for better play
-        mcts.run(cfg.mcts_steps * 4) 
+        mcts.run(self.mcts_steps * 4) 
         
         policy_dict = node.get_policy_dict(normalized=True)
         
@@ -55,9 +51,8 @@ class HumanPlayer:
             print("Invalid move, try again.")
 
 def main():
+    cfg = Config()
     game_mode = 'tictactoe'
-    if game_mode == 'tictactoe':
-        adapter = TicTacToeAdapter()
     # elif game_mode == 'chess':
     #     adapter = ChessAdapter()
     
@@ -79,7 +74,7 @@ def main():
     model.to(device)
     model.eval()
 
-    ai_player = MCTSPlayer(model, device)
+    ai_player = MCTSPlayer(model, device, cfg.mcts_steps)
     human_player = HumanPlayer()
 
     # Game Loop

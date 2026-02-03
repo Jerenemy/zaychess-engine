@@ -4,18 +4,17 @@ import random
 import logging
 from abc import ABC, abstractmethod
 
-from alpha_zero import Config, AlphaZeroNet, MCTS, Node, setup_logger
+from alpha_zero import Config, AlphaZeroNet, MCTS, Node
+from alpha_zero.logger_config import setup_logger
 from alpha_zero.game_adapter import ChessAdapter, TicTacToeAdapter
 from alpha_zero import chess_wrapper as cw
 from alpha_zero import tictactoe as ttt
 
-cfg = Config()
-logger = setup_logger('evaluate', level=logging.INFO)
-
 class Arena:
-    def __init__(self, challenger, baseline):
+    def __init__(self, challenger, baseline, logger=None):
         self.challenger = challenger
         self.baseline = baseline
+        self.logger = logger or logging.getLogger(__name__)
     
     def play_game(self, move_first=True, num_moves=20, game_mode='chess'):
         game_lib = cw if game_mode == 'chess' else ttt
@@ -42,7 +41,7 @@ class Arena:
 
     def evaluate(self, num_games=10, game_mode='chess'):
         results_keys = {"1-0": 0, "0-1": 0, "1/2-1/2": 0, "*": 0}
-        logger.info(f"Evaluating {num_games} games")
+        self.logger.info(f"Evaluating {num_games} games")
         challenger_win_percentage = 0
         for i in range(num_games):
             # Alternate who goes first
@@ -59,12 +58,12 @@ class Arena:
             elif result == "0-1":
                 winner_str = "Baseline (Random) Won"
                 
-            logger.info(f"Game {i+1}/{num_games} finished: {result} -> {winner_str}")
+            self.logger.info(f"Game {i+1}/{num_games} finished: {result} -> {winner_str}")
             
-        logger.info("\nFinal Summary:")
-        logger.info(f"Challenger Wins: {results_keys['1-0']}")
-        logger.info(f"Baseline Wins:   {results_keys['0-1']}")
-        logger.info(f"Draws:           {results_keys['1/2-1/2']}")
+        self.logger.info("\nFinal Summary:")
+        self.logger.info(f"Challenger Wins: {results_keys['1-0']}")
+        self.logger.info(f"Baseline Wins:   {results_keys['0-1']}")
+        self.logger.info(f"Draws:           {results_keys['1/2-1/2']}")
         
         return challenger_win_percentage / num_games
 
@@ -84,6 +83,10 @@ class RandomPlayer(Player):
         return random.choice(list(board.legal_moves))
 
 class MCTSPlayer(Player):
+    def __init__(self, model, device, mcts_steps, game_mode='chess'):
+        super().__init__(model, device, game_mode=game_mode)
+        self.mcts_steps = mcts_steps
+
     def get_move(self, board):
         # 1. Create a Node from the current board
         # "0000" is a dummy move for the root
@@ -91,7 +94,7 @@ class MCTSPlayer(Player):
         
         # 2. Run MCTS
         mcts = MCTS(node, self.model, self.adapter)
-        mcts.run(cfg.mcts_steps)
+        mcts.run(self.mcts_steps)
         
         # 3. Pick the move with the most visits
         policy_dict = node.get_policy_dict()
@@ -99,6 +102,8 @@ class MCTSPlayer(Player):
         return best_move
     
 def main():
+    cfg = Config()
+    logger = setup_logger('evaluate', level=logging.INFO)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     checkpoint = torch.load("checkpoints/az_gen_9_epoch_0.pt", map_location=device)
@@ -112,7 +117,11 @@ def main():
     model.eval()
     
     print(f"Loaded model from generation {checkpoint.get('gen', 'unknown')}")
-    arena = Arena(MCTSPlayer(model, device, game_mode=game_mode), RandomPlayer(None, device, game_mode=game_mode))
+    arena = Arena(
+        MCTSPlayer(model, device, cfg.mcts_steps, game_mode=game_mode),
+        RandomPlayer(None, device, game_mode=game_mode),
+        logger=logger,
+    )
     results = arena.evaluate(num_games=4, game_mode=game_mode)
     print("\nFinal results:")
     print(results)

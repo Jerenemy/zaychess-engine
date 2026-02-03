@@ -1,20 +1,13 @@
-import logging
-
 from .model import AlphaZeroNet
 from .mcts import MCTS, Node
 from .utils import sample_next_move
 from .config import Config
 from .dataset import label_data
-from . import logger_config
 from .game_adapter import GameAdapter
-logger = logger_config.setup_logger('self_play', level=logging.DEBUG)
 
-def play_one_game(model: AlphaZeroNet, cfg: Config, adapter: GameAdapter):
+def play_one_game(model: AlphaZeroNet, cfg: Config, adapter: GameAdapter, logger=None):
     board = adapter.new_board()
-    # if game_mode == 'chess':
-    #     board = cw.Board() 
-    # elif game_mode == 'tictactoe':
-    #     board = ttt.Board()
+
     node = Node(board, "0000")
     moves = []
     while not adapter.is_terminal(node.state) and len(moves) < cfg.max_num_moves_per_game:
@@ -47,6 +40,7 @@ def play_one_game(model: AlphaZeroNet, cfg: Config, adapter: GameAdapter):
         adapter.push(next_state, next_move_uci)
         node = Node(next_state, next_move_uci)
     result_str = adapter.result(node.state)
-    logger.debug(f"Game result: {result_str} ({len(moves)} moves)")
+    if logger is not None:
+        logger.debug(f"Game result: {result_str} ({len(moves)} moves)")
     labeled_data = label_data(moves, result_str)
     return labeled_data, result_str, len(moves)

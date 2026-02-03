@@ -15,8 +15,8 @@ class Config:
     temperature_move_threshold: int = 2
     
     # Buffer Settings
-    max_buffer_size: int = 1024
-    buffer_batch_size: int = 256
+    max_buffer_size: int = 256
+    buffer_batch_size: int = 128
     
     # Checkpoint Settings
     checkpoint_dir: str = "checkpoints"

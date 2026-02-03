@@ -1,24 +1,24 @@
 import os
 import torch
-import logging
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from alpha_zero import (
-    Config, 
-    AlphaZeroNet, 
-    setup_logger, 
-)
+from alpha_zero import AlphaZeroNet
 
-cfg = Config()
-logger = setup_logger('train', level=logging.DEBUG)
-
-def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
-    os.makedirs(cfg.checkpoint_dir, exist_ok=True)
+def save_checkpoint(
+    model,
+    optimizer,
+    gen,
+    checkpoint_dir,
+    epoch=None,
+    buffer_len=None,
+    num_actions=4672,
+):
+    os.makedirs(checkpoint_dir, exist_ok=True)
     name = f"az_gen_{gen}"
     if epoch is not None:
         name += f"_epoch_{epoch}"
-    path = os.path.join(cfg.checkpoint_dir, f"{name}.pt")
+    path = os.path.join(checkpoint_dir, f"{name}.pt")
     torch.save(
         {
             "model": model.state_dict(),
@@ -26,7 +26,7 @@ def save_checkpoint(model, optimizer, gen, epoch=None, buffer_len=None):
             "gen": gen,
             "epoch": epoch,
             "buffer_len": buffer_len,
-            "num_actions": 4672,
+            "num_actions": num_actions,
         },
         path,
     )
