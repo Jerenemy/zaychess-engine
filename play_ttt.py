@@ -66,7 +66,7 @@ def main() -> None:
     
     # Load Checkpoint - try to find latest or specific one
     # For now hardcoding the one we know exists or handling error
-    ckpt_path = "checkpoints/az_gen_19_epoch_1.pt"
+    ckpt_path = "checkpoints/ttt_run_1/az_gen_19_epoch_1.pt"
     try:
         checkpoint = torch.load(ckpt_path, map_location=device)
         model.load_state_dict(checkpoint["model"])

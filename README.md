@@ -24,7 +24,7 @@ AlphaZero-style training and MCTS inference for chess and tic-tac-toe. The curre
 ├── runs/                         # Experiment runs (generated)
 ├── evaluate.py                  # Evaluate model vs random baseline
 ├── play_ttt.py                  # Interactive tic-tac-toe
-├── train.py                     # Chess training loop
+├── train_ttt.py                 # Training loop (TicTacToe)
 ├── train_ttt.py                 # Tic-tac-toe training loop
 ├── training_utils.py            # Shared training helpers
 ├── uci_engine.py                # UCI engine wrapper for chess
@@ -63,7 +63,7 @@ pip install -e .
 
 ### Train (chess)
 ```
-python train.py
+python train_ttt.py
 ```
 
 ### Train (tic-tac-toe)
