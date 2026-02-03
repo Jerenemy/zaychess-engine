@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import argparse
 import logging
@@ -14,7 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger('uci')
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='AlphaZero UCI Engine')
     parser.add_argument('--checkpoint', type=str, required=True, help='Path to model checkpoint')
     parser.add_argument('--mcts-steps', type=int, default=100, help='Number of MCTS simulations per move')
@@ -22,14 +24,14 @@ def parse_args():
     return parser.parse_args()
 
 class UCIEngine:
-    def __init__(self, checkpoint_path, mcts_steps, use_cuda):
+    def __init__(self, checkpoint_path: str, mcts_steps: int, use_cuda: bool) -> None:
         self.mcts_steps = mcts_steps
         self.device = torch.device("cuda" if use_cuda and torch.cuda.is_available() else "cpu")
         logger.info(f"Using device: {self.device}")
         self.adapter = ChessAdapter()
         
         # Load Model
-        self.model = AlphaZeroNet()
+        self.model: AlphaZeroNet = AlphaZeroNet()
         try:
             # Load full checkpoint dict, then extract 'model' key
             checkpoint = torch.load(checkpoint_path, map_location=self.device)
@@ -48,7 +50,7 @@ class UCIEngine:
             
         self.board = self.adapter.new_board()
 
-    def loop(self):
+    def loop(self) -> None:
         while True:
             try:
                 line = sys.stdin.readline()
@@ -60,7 +62,7 @@ class UCIEngine:
             except Exception as e:
                 logger.error(f"Error in loop: {e}")
                 
-    def handle_command(self, cmd_line):
+    def handle_command(self, cmd_line: str) -> None:
         tokens = cmd_line.split()
         if not tokens:
             return
@@ -89,7 +91,7 @@ class UCIEngine:
         elif cmd == "quit":
             sys.exit(0)
 
-    def _handle_position(self, tokens):
+    def _handle_position(self, tokens: list[str]) -> None:
         # position [startpos | fen <fen>] [moves <moves>]
         idx = 1
         if idx >= len(tokens):
@@ -115,7 +117,7 @@ class UCIEngine:
                 except ValueError:
                     logger.error(f"Invalid move format: {move_uci}")
 
-    def _handle_go(self, tokens):
+    def _handle_go(self, tokens: list[str]) -> None:
         # We ignore time controls for now and just use fixed nodes
         
         # Create MCTS root from current board

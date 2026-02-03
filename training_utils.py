@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Optional
 import os
 import torch
 import torch.nn.functional as F
@@ -6,14 +9,14 @@ from torch.utils.data import DataLoader
 from alpha_zero import AlphaZeroNet
 
 def save_checkpoint(
-    model,
-    optimizer,
-    gen,
-    checkpoint_dir,
-    epoch=None,
-    buffer_len=None,
-    num_actions=4672,
-):
+    model: AlphaZeroNet,
+    optimizer: torch.optim.Optimizer,
+    gen: int,
+    checkpoint_dir: str,
+    epoch: Optional[int] = None,
+    buffer_len: Optional[int] = None,
+    num_actions: int = 4672,
+) -> str:
     os.makedirs(checkpoint_dir, exist_ok=True)
     name = f"az_gen_{gen}"
     if epoch is not None:
@@ -32,7 +35,13 @@ def save_checkpoint(
     )
     return path
 
-def run_train_epoch(model: AlphaZeroNet, optimizer: torch.optim.Optimizer, dataloader: DataLoader, device: torch.device, target="policy"):
+def run_train_epoch(
+    model: AlphaZeroNet,
+    optimizer: torch.optim.Optimizer,
+    dataloader: DataLoader,
+    device: torch.device,
+    target: str = "policy",
+) -> float:
     model.train()
     total_loss = 0.0
     for batch in dataloader:

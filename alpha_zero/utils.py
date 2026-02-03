@@ -1,6 +1,8 @@
+from __future__ import annotations
+
+from typing import Any, Dict, Optional, Protocol, Sequence, Callable
 import numpy as np
 import chess
-from typing import Protocol, Any, Dict, List, Optional
 
 # --- Action Converter Interface ---
 
@@ -18,7 +20,7 @@ class ActionConverter(Protocol):
 # --- Chess Converter (Original) ---
 
 class ChessActionConverter:
-    def __init__(self):
+    def __init__(self) -> None:
         # 1. Define the 8 compass directions (dx, dy)
         self.queen_dirs = [
             (1, 0), (1, 1), (0, 1), (-1, 1), 
@@ -36,11 +38,11 @@ class ChessActionConverter:
         self.underpromo_pieces = [chess.KNIGHT, chess.BISHOP, chess.ROOK]
 
         # 4. BUILD THE LOOKUP TABLES
-        self.move_to_id = {}
-        self.id_to_move = {}
+        self.move_to_id: dict[str, int] = {}
+        self.id_to_move: dict[int, str] = {}
         self._build_mapping()
 
-    def _build_mapping(self):
+    def _build_mapping(self) -> None:
         counter = 0
         for from_sq in range(64):
             rank = chess.square_rank(from_sq)
@@ -90,7 +92,7 @@ class ChessActionConverter:
                             self._add_move(move, counter)
                     counter += 1
 
-    def _add_move(self, move, idx):
+    def _add_move(self, move: chess.Move, idx: int) -> None:
         uci = move.uci()
         if uci not in self.move_to_id:
             self.move_to_id[uci] = idx
@@ -108,7 +110,7 @@ class ChessActionConverter:
     def decode(self, idx: int) -> Optional[str]:
         return self.id_to_move.get(idx, None)
     
-    def policy_to_tensor(self, policy_dict):
+    def policy_to_tensor(self, policy_dict: Dict[str, float]) -> np.ndarray:
         arr = np.zeros(4672, dtype=np.float32)
         total_visits = sum(policy_dict.values())
         if total_visits <= 0:
@@ -126,8 +128,8 @@ class ChessActionConverter:
 # --- TicTacToe Converter ---
 
 class TicTacToeActionConverter:
-    def __init__(self):
-        self.size = 9 # Only 9 squares
+    def __init__(self) -> None:
+        self.size: int = 9 # Only 9 squares
         
     def encode(self, move_uci: str) -> Optional[int]:
         # '0' -> 0, '8' -> 8
@@ -141,7 +143,7 @@ class TicTacToeActionConverter:
             return str(idx)
         return None
     
-    def policy_to_tensor(self, policy_dict):
+    def policy_to_tensor(self, policy_dict: Dict[str, float]) -> np.ndarray:
         arr = np.zeros(9, dtype=np.float32)
         total_visits = sum(policy_dict.values())
         if total_visits <= 0:
@@ -158,7 +160,7 @@ class TicTacToeActionConverter:
 
 # --- Board to Tensor Functions ---
 
-def chess_board_to_tensor(board: chess.Board):
+def chess_board_to_tensor(board: chess.Board) -> np.ndarray:
     if hasattr(board, 'board'):
         board = board.board
     tensor = np.zeros((12, 8, 8), dtype=np.float32)
@@ -177,7 +179,7 @@ def chess_board_to_tensor(board: chess.Board):
             tensor[channel, row, col] = 1.0
     return tensor
 
-def tictactoe_board_to_tensor(board):
+def tictactoe_board_to_tensor(board: Any) -> np.ndarray:
     # simple 3 channel: P1 pieces, P2 pieces, Turn
     # Or just 2 channels: Own pieces, Opponent pieces? 
     # Let's match typical alpha zero TTT: 3 planes:
@@ -200,12 +202,12 @@ def tictactoe_board_to_tensor(board):
 # --- Common Utils ---
 
 def sample_next_move(
-    move_probs,
-    legal_moves=None,
-    temperature=1.0,
-    encode_move=None,
-    decode_move=None,
-):
+    move_probs: Sequence[float] | np.ndarray,
+    legal_moves: Optional[Sequence[Any]] = None,
+    temperature: float = 1.0,
+    encode_move: Optional[Callable[[str], Optional[int]]] = None,
+    decode_move: Optional[Callable[[int], Optional[str]]] = None,
+) -> str:
     probs = np.asarray(move_probs, dtype=np.float64).flatten()
 
     if encode_move is None or decode_move is None:
@@ -247,7 +249,7 @@ import sys
 import psutil
 import os
 
-def check_memory(logger, step_name):
+def check_memory(logger: Any, step_name: str) -> None:
     process = psutil.Process(os.getpid())
     mem_gb = process.memory_info().rss / (1024 ** 3) 
     logger.debug(f"MEM CHECK [{step_name}]: {mem_gb:.2f} GB")

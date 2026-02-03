@@ -6,13 +6,12 @@ from alpha_zero.dataset import AlphaZeroDataset, Buffer, label_data
 
 def test_label_data_white_wins():
     # Setup: 2 positions, White turn for both, White eventually wins
-    board1 = chess.Board()
-    board2 = board1.copy()
-    board2.push_uci("e2e4")
+    board1 = np.zeros((12, 8, 8), dtype=np.float32)
+    board2 = np.zeros((12, 8, 8), dtype=np.float32)
     
     game_data = [
-        (board1, [0]*4672, 1, None),
-        (board2, [0]*4672, 1, None)
+        (board1, [0]*4672, 1),
+        (board2, [0]*4672, 1)
     ]
     result_str = "1-0"
     
@@ -25,13 +24,12 @@ def test_label_data_white_wins():
 
 def test_label_data_black_wins():
     # Setup: 2 positions, White turn then Black turn, Black eventually wins
-    board1 = chess.Board()
-    board2 = board1.copy()
-    board2.push_uci("e2e4")
+    board1 = np.zeros((12, 8, 8), dtype=np.float32)
+    board2 = np.zeros((12, 8, 8), dtype=np.float32)
     
     game_data = [
-        (board1, [0]*4672, 1, None), # White turn
-        (board2, [0]*4672, -1, None) # Black turn
+        (board1, [0]*4672, 1), # White turn
+        (board2, [0]*4672, -1) # Black turn
     ]
     result_str = "0-1"
     
@@ -43,8 +41,8 @@ def test_label_data_black_wins():
     assert labeled[1][2] == 1.0
 
 def test_label_data_draw():
-    board1 = chess.Board()
-    game_data = [(board1, [0]*4672, 1, None)]
+    board1 = np.zeros((12, 8, 8), dtype=np.float32)
+    game_data = [(board1, [0]*4672, 1)]
     result_str = "1/2-1/2"
     
     labeled = label_data(game_data, result_str)

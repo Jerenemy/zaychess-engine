@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import logging
 import sys
 import os
 from datetime import datetime
 
-def setup_logger(name, log_dir="logs", level=logging.INFO):
+def setup_logger(name: str, log_dir: str = "logs", level: int = logging.INFO) -> logging.Logger:
     """
     Sets up a logger that outputs to console and a timestamped file.
     Args:

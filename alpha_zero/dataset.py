@@ -1,20 +1,22 @@
+from __future__ import annotations
 
+from typing import Iterable, Sequence
+from collections import deque
+import random
+import numpy as np
 import torch
 from torch.utils.data import Dataset
-import chess
-import random
-from collections import deque
 
 class AlphaZeroDataset(Dataset):
     # dont need a custom collate function since the inputs are the same size 
     # (collate is when have "state": s1, "state": s2, convert to "state": Tensor(s1,s2))
-    def __init__(self, entries):
+    def __init__(self, entries: Sequence[tuple[np.ndarray, Sequence[float], float]]) -> None:
         self.entries = entries
     
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.entries)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         # get raw data tuple
         board, policy, value = self.entries[idx]
         
@@ -36,10 +38,14 @@ class AlphaZeroDataset(Dataset):
         }
     
 
-def label_data(game_data: list[chess.Board,list,int,None], result_str: str):
+def label_data(
+    game_data: Sequence[tuple[np.ndarray, Sequence[float], int]],
+    result_str: str,
+) -> list[tuple[np.ndarray, Sequence[float], float]]:
     """
-    game_data: list of (node, policy, None)
+    game_data: list of (board_tensor, policy, turn)
     result_str: "1-0", "0-1", or "1/2-1/2"
+    returns: list of (board_tensor, policy, winner_label)
     """
     # 1. Determine the global winner
     global_winner = None
@@ -52,34 +58,34 @@ def label_data(game_data: list[chess.Board,list,int,None], result_str: str):
     labeled_data = []
     
     # 2. Assign rewards relative to the player whose turn it was
-    for board, policy, turn, _ in game_data:
+    for board, policy, turn in game_data:
         
         # Case A: Draw
         if global_winner is None:
-            z = 0.0
+            value = 0.0
             
         # Case B: The current player matches the winner
         elif turn == global_winner:
-            z = 1.0
+            value = 1.0
             
         # Case C: The current player lost
         else:
-            z = -1.0
+            value = -1.0
             
-        labeled_data.append((board, policy, z))
+        labeled_data.append((board, policy, value))
         
     return labeled_data
 
 
 
 class Buffer:
-    def __init__(self, maxlen):
+    def __init__(self, maxlen: int) -> None:
         # maxlen: max num moves to store
         # deque w maxlen automatically handles sliding window logic
-        self.memory = deque(maxlen=maxlen)
-        self.maxlen = maxlen
+        self.memory: deque[tuple[np.ndarray, Sequence[float], float]] = deque(maxlen=maxlen)
+        self.maxlen: int = maxlen
         
-    def add(self, experience: list|tuple):
+    def add(self, experience: Sequence[tuple[np.ndarray, Sequence[float], float]] | tuple[np.ndarray, Sequence[float], float]) -> None:
         """
         experience: tuple (state, policy, val) or list of tuples
         """
@@ -88,7 +94,7 @@ class Buffer:
         else:
             self.memory.append(experience)
      
-    def sample_batch(self, batch_size) -> list:
+    def sample_batch(self, batch_size: int) -> list[tuple[np.ndarray, Sequence[float], float]]:
         """
         returns random sample of batch_size. if buffer smaller than batch_size, returns entire buffer
         """
@@ -96,6 +102,6 @@ class Buffer:
             return list(self.memory)
         return random.sample(self.memory, batch_size)
     
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.memory)
     

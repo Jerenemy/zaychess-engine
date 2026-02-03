@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Optional
 import numpy as np
 
 WHITE = True
@@ -5,45 +8,45 @@ BLACK = False
 DRAW = "1/2-1/2"
 
 class Move:
-    def __init__(self, uci):
-        self._uci = uci
+    def __init__(self, uci: str) -> None:
+        self._uci: str = uci
 
-    def uci(self):
+    def uci(self) -> str:
         return self._uci
     
-    def __str__(self):
+    def __str__(self) -> str:
         return self._uci
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Move({self._uci})"
     
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Move) and self._uci == other._uci
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self._uci)
 
 class Board:
-    def __init__(self, board_array=None, turn=WHITE):
+    def __init__(self, board_array: Optional[np.ndarray] = None, turn: bool | int = WHITE) -> None:
         # 3x3 board
         # 0 represents empty, 1 is X (White), -1 is O (Black)
         if board_array is None:
-            self.board = np.zeros((3, 3), dtype=int)
+            self.board: np.ndarray = np.zeros((3, 3), dtype=int)
         else:
             self.board = board_array
-        self.turn = turn
-        self._result = None
-        self._game_over = False
-        self.move_stack = []
+        self.turn: bool | int = turn
+        self._result: Optional[str] = None
+        self._game_over: bool = False
+        self.move_stack: list[Move] = []
 
-    def copy(self):
+    def copy(self) -> Board:
         new_board = Board(self.board.copy(), self.turn)
         new_board._result = self._result
         new_board._game_over = self._game_over
         new_board.move_stack = self.move_stack.copy()
         return new_board
 
-    def push(self, move):
+    def push(self, move: Move | str | int) -> None:
         # Move can be integer (0-8) or string "0"-"8" or Move object
         if isinstance(move, Move):
             move_uci = move.uci()
@@ -67,10 +70,10 @@ class Board:
         
         self.turn = -self.turn
 
-    def push_uci(self, uci):
+    def push_uci(self, uci: str) -> None:
         self.push(Move(uci))
 
-    def pop(self):
+    def pop(self) -> None:
         if not self.move_stack:
             return
         
@@ -95,7 +98,7 @@ class Board:
         # Let's just say we assume valid popping.
 
     @property
-    def legal_moves(self):
+    def legal_moves(self) -> list[Move]:
         if self.is_game_over():
             return []
         
@@ -108,7 +111,7 @@ class Board:
                     moves.append(Move(str(idx)))
         return moves
 
-    def is_game_over(self):
+    def is_game_over(self) -> bool:
         # We check this lazily or aggressively?
         # _check_status sets it. 
         # But if we just created board from array?
@@ -117,13 +120,13 @@ class Board:
         # If not set, maybe check? but MCTS uses push primarily.
         return False
     
-    def result(self):
+    def result(self) -> str:
         # Return "1-0", "0-1", "1/2-1/2" or "*"
         if self._result is None:
             return "*"
         return self._result
 
-    def _check_status(self, last_r, last_c):
+    def _check_status(self, last_r: int, last_c: int) -> None:
         # Check row
         if np.all(self.board[last_r, :] == self.board[last_r, 0]):
             self._set_winner(self.board[last_r, 0])
@@ -149,7 +152,7 @@ class Board:
             self._game_over = True
             return
 
-    def _set_winner(self, player_val):
+    def _set_winner(self, player_val: int) -> None:
         self._game_over = True
         # player_val is the board value: 1 (White/X) or -1 (Black/O)
         # But we need to set result based on who that corresponds to.
@@ -163,7 +166,7 @@ class Board:
         else:
             self._result = "1/2-1/2"
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = ""
         symbols = {0: ".", 1: "X", -1: "O"}
         for r in range(3):

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Any
 import torch
 from alpha_zero import Config, AlphaZeroNet, MCTS, Node
 from alpha_zero.game_adapter import TicTacToeAdapter
@@ -9,13 +12,13 @@ from alpha_zero import tictactoe as ttt
 # I will copy the MCTSPlayer logic here for simplicity.
 
 class MCTSPlayer:
-    def __init__(self, model, device, mcts_steps):
+    def __init__(self, model: AlphaZeroNet, device: torch.device, mcts_steps: int) -> None:
         self.model = model
         self.device = device
         self.adapter = TicTacToeAdapter()
         self.mcts_steps = mcts_steps
     
-    def get_move(self, board):
+    def get_move(self, board: Any) -> str:
         node = Node(board, "0000")
         mcts = MCTS(node, self.model, self.adapter)
         # Use more steps for better play
@@ -36,7 +39,7 @@ class MCTSPlayer:
         return best_move
 
 class HumanPlayer:
-    def get_move(self, board):
+    def get_move(self, board: Any) -> str:
         legal_moves = [str(m) for m in board.legal_moves]
         print(f"Legal moves: {legal_moves}")
         while True:
@@ -50,7 +53,7 @@ class HumanPlayer:
                 return inp
             print("Invalid move, try again.")
 
-def main():
+def main() -> None:
     cfg = Config()
     game_mode = 'tictactoe'
     # elif game_mode == 'chess':

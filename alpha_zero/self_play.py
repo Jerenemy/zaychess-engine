@@ -1,3 +1,9 @@
+from __future__ import annotations
+
+from typing import Optional
+import logging
+import numpy as np
+
 from .model import AlphaZeroNet
 from .mcts import MCTS, Node
 from .utils import sample_next_move
@@ -5,7 +11,12 @@ from .config import Config
 from .dataset import label_data
 from .game_adapter import GameAdapter
 
-def play_one_game(model: AlphaZeroNet, cfg: Config, adapter: GameAdapter, logger=None):
+def play_one_game(
+    model: AlphaZeroNet,
+    cfg: Config,
+    adapter: GameAdapter,
+    logger: Optional[logging.Logger] = None,
+) -> tuple[list[tuple[np.ndarray, np.ndarray, float]], str, int]:
     board = adapter.new_board()
 
     node = Node(board, "0000")
@@ -27,7 +38,7 @@ def play_one_game(model: AlphaZeroNet, cfg: Config, adapter: GameAdapter, logger
             temp = 0.0
 
         # 4. store and later add to buffer
-        moves.append((board_tensor, policy_array, turn, None))
+        moves.append((board_tensor, policy_array, turn))
         legal_moves = list(adapter.legal_moves(node.state))
         next_move_uci = sample_next_move(
             policy_array,

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Any, Callable, Iterable, Optional
 from typing_extensions import Self
 import numpy as np
 # import logging
@@ -9,17 +12,17 @@ from .game_adapter import GameAdapter
 
 
 class Node:
-    def __init__(self, state, associated_move: str):
+    def __init__(self, state: Any, associated_move: str) -> None:
         """Create a node for a board state and its incoming move."""
         self.state = state
-        self.children: list = []
-        self.visits = 0
-        self.value_sum = 0
-        self.associated_move = associated_move
-        self.policy = None # where is this used
-        self.prior = 0.0 
+        self.children: list[Node] = []
+        self.visits: int = 0
+        self.value_sum: float = 0.0
+        self.associated_move: str = associated_move
+        self.policy: Optional[np.ndarray] = None
+        self.prior: float = 0.0 
     
-    def get_policy_dict(self, normalized: bool = False) -> dict:
+    def get_policy_dict(self, normalized: bool = False) -> dict[str, float]:
         """Return a move-to-visits dict, optionally normalized to probabilities."""
         # Map move UCI strings to visit counts for the child nodes.
         policy = {child.associated_move: child.visits for child in self.children}
@@ -31,12 +34,12 @@ class Node:
     
     def apply_move_from_dist(
         self,
-        next_move_probs,
-        legal_moves,
-        temperature=1.0,
-        encode_move=None,
-        decode_move=None,
-        child_factory=None,
+        next_move_probs: np.ndarray,
+        legal_moves: Iterable[Any],
+        temperature: float = 1.0,
+        encode_move: Optional[Callable[[str], Optional[int]]] = None,
+        decode_move: Optional[Callable[[int], Optional[str]]] = None,
+        child_factory: Optional[Callable[[Node, Any], Node]] = None,
     ) -> Self:
         """Sample a move from a policy vector and return the resulting child node."""
         if legal_moves is None:
@@ -75,7 +78,11 @@ class Node:
         """Return the game result string for the current state."""
         return self.state.result()
         
-    def expand_children(self, moves, child_factory=None) -> None:
+    def expand_children(
+        self,
+        moves: Iterable[Any],
+        child_factory: Optional[Callable[[Node, Any], Node]] = None,
+    ) -> None:
         """Generate child nodes for all legal moves."""
         if moves is None:
             raise ValueError("moves must be provided when expanding children.")
@@ -123,14 +130,14 @@ class Node:
 
 
 class MCTS:
-    def __init__(self, root: Node, model: AlphaZeroNet, adapter: GameAdapter):
+    def __init__(self, root: Node, model: AlphaZeroNet, adapter: GameAdapter) -> None:
         """Initialize the MCTS runner with a root node and policy/value model."""
         self.root = root
         self.model = model
         self.adapter = adapter
         self.c_puct = 1.0
     
-    def run(self, steps):
+    def run(self, steps: int) -> None:
         """Run a fixed number of MCTS simulations."""
         for _ in range(steps):
             self._search(self.root)
@@ -182,7 +189,7 @@ class MCTS:
         # print(type(best_child))
         return best_child
     
-    def _ucb_score(self, parent: Node, child: Node):
+    def _ucb_score(self, parent: Node, child: Node) -> float:
         """Compute the PUCT UCB score for a child node."""
         # 1. Calculate Q (Exploitation)
         # "Value" from the perspective of the parent. 
@@ -198,18 +205,18 @@ class MCTS:
         
         return q_value + u_score
 
-    def get_terminal_value(self, node) -> int:
+    def get_terminal_value(self, node: Node) -> float:
         """Return the terminal value from the current player's perspective."""
         return self.adapter.terminal_value(node.state)
 
-    def _create_child(self, parent: Node, move) -> Node:
+    def _create_child(self, parent: Node, move: Any) -> Node:
         """Create a child node by applying a move to a copied board."""
         state_copy = self.adapter.copy_board(parent.state)
         self.adapter.push(state_copy, move)
         move_uci = move.uci() if hasattr(move, 'uci') else str(move)
         return Node(state_copy, move_uci)
 
-    def generate_moves(self, node) -> list:
+    def generate_moves(self, node: Node) -> list[Any]:
         """Return the legal moves from this position."""
         return list(self.adapter.legal_moves(node.state))
 
@@ -222,11 +229,11 @@ class MCTS:
     #     """Return True if the current state is terminal."""
     #     return self.state.is_game_over() #TODO: either doesnt have this logic or needs adapter
     
-    def is_terminal(self, node):
+    def is_terminal(self, node: Node) -> bool:
         """Return True if the game is over for this node."""
         return self.adapter.is_terminal(node.state)
 
-    def print_child_visits(self):
+    def print_child_visits(self) -> None:
         """Print visit counts for each child of the root."""
         for child in self.root.children:
             print(f"{child.associated_move}: {child.visits}. ")

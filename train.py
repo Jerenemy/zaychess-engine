@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Optional
 import os
 import torch
 import logging
@@ -15,7 +18,15 @@ from alpha_zero import (
 )
 from alpha_zero.logger_config import setup_logger
 
-def save_checkpoint(model, optimizer, gen, checkpoint_dir, epoch=None, buffer_len=None, num_actions=4672):
+def save_checkpoint(
+    model: AlphaZeroNet,
+    optimizer: torch.optim.Optimizer,
+    gen: int,
+    checkpoint_dir: str,
+    epoch: Optional[int] = None,
+    buffer_len: Optional[int] = None,
+    num_actions: int = 4672,
+) -> str:
     os.makedirs(checkpoint_dir, exist_ok=True)
     name = f"az_gen_{gen}"
     if epoch is not None:
@@ -34,7 +45,13 @@ def save_checkpoint(model, optimizer, gen, checkpoint_dir, epoch=None, buffer_le
     )
     return path
 
-def run_train_epoch(model: AlphaZeroNet, optimizer: torch.optim.Optimizer, dataloader: DataLoader, device: torch.device, label="policy"):
+def run_train_epoch(
+    model: AlphaZeroNet,
+    optimizer: torch.optim.Optimizer,
+    dataloader: DataLoader,
+    device: torch.device,
+    label: str = "policy",
+) -> float:
     model.train()
     total_loss = 0.0
     for batch in dataloader:
@@ -55,7 +72,7 @@ def run_train_epoch(model: AlphaZeroNet, optimizer: torch.optim.Optimizer, datal
         total_loss += loss.item()
     return total_loss / len(dataloader)
 
-def main():
+def main() -> None:
     cfg = Config()
     logger = setup_logger('train', level=logging.DEBUG)
     buffer = Buffer(maxlen=cfg.max_buffer_size)

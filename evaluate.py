@@ -1,4 +1,7 @@
 # import chess
+from __future__ import annotations
+
+from typing import Any, Optional
 import torch
 import random
 import logging
@@ -11,12 +14,12 @@ from alpha_zero import chess_wrapper as cw
 from alpha_zero import tictactoe as ttt
 
 class Arena:
-    def __init__(self, challenger, baseline, logger=None):
+    def __init__(self, challenger: Player, baseline: Player, logger: Optional[logging.Logger] = None) -> None:
         self.challenger = challenger
         self.baseline = baseline
         self.logger = logger or logging.getLogger(__name__)
     
-    def play_game(self, move_first=True, num_moves=20, game_mode='chess'):
+    def play_game(self, move_first: bool = True, num_moves: int = 20, game_mode: str = 'chess') -> str:
         game_lib = cw if game_mode == 'chess' else ttt
         board = game_lib.Board()
         # Challenger is White if move_first is True, else Black
@@ -33,13 +36,13 @@ class Arena:
         # board.result() returns the winner with respect to the player who moved first
         return board.result()
     
-    def _parse_result(self, result, move_first):
+    def _parse_result(self, result: str, move_first: bool) -> str:
         if move_first:
             return result
         else:
             return "1-0" if result == "0-1" else "0-1" if result == "1-0" else result
 
-    def evaluate(self, num_games=10, game_mode='chess'):
+    def evaluate(self, num_games: int = 10, game_mode: str = 'chess') -> float:
         results_keys = {"1-0": 0, "0-1": 0, "1/2-1/2": 0, "*": 0}
         self.logger.info(f"Evaluating {num_games} games")
         challenger_win_percentage = 0
@@ -68,26 +71,27 @@ class Arena:
         return challenger_win_percentage / num_games
 
 class Player(ABC):
-    def __init__(self, model, device, game_mode='chess'):
+    def __init__(self, model: Optional[AlphaZeroNet], device: torch.device, game_mode: str = 'chess') -> None:
         self.model = model
         self.device = device
         self.game_lib = cw if game_mode == 'chess' else ttt
         self.adapter = ChessAdapter() if game_mode == 'chess' else TicTacToeAdapter()
     
     @abstractmethod
-    def get_move(self, board):
+    def get_move(self, board: Any) -> Any:
+        pass
         pass
 
 class RandomPlayer(Player):
-    def get_move(self, board):
+    def get_move(self, board: Any) -> Any:
         return random.choice(list(board.legal_moves))
 
 class MCTSPlayer(Player):
-    def __init__(self, model, device, mcts_steps, game_mode='chess'):
+    def __init__(self, model: AlphaZeroNet, device: torch.device, mcts_steps: int, game_mode: str = 'chess') -> None:
         super().__init__(model, device, game_mode=game_mode)
         self.mcts_steps = mcts_steps
 
-    def get_move(self, board):
+    def get_move(self, board: Any) -> str:
         # 1. Create a Node from the current board
         # "0000" is a dummy move for the root
         node = Node(board, "0000")
@@ -101,7 +105,7 @@ class MCTSPlayer(Player):
         best_move = max(policy_dict, key=policy_dict.get)
         return best_move
     
-def main():
+def main() -> None:
     cfg = Config()
     logger = setup_logger('evaluate', level=logging.INFO)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -1,9 +1,13 @@
+from __future__ import annotations
+
+from typing import Any, Callable
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 class ResBlock(nn.Module):
-    def __init__(self, num_channels):
+    def __init__(self, num_channels: int) -> None:
         super().__init__()
         # self.dim = num_channels
         
@@ -19,7 +23,7 @@ class ResBlock(nn.Module):
         
         # why need to define 2 bn's? if theyre both the same? i get the cnn, cause i think it has params that need to be tuned, but why the bn? does that have params to be tuned too?
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # 1: save the 'residual' (the original input)
         residual = x
         
@@ -43,7 +47,13 @@ class ResBlock(nn.Module):
         
 
 class AlphaZeroNet(nn.Module):
-    def __init__(self, input_shape=(12, 8, 8), num_actions=4672, resblock_dim=256, num_resblocks=10):
+    def __init__(
+        self,
+        input_shape: tuple[int, int, int] = (12, 8, 8),
+        num_actions: int = 4672,
+        resblock_dim: int = 256,
+        num_resblocks: int = 10,
+    ) -> None:
         super().__init__()
 
         self.conv1 = nn.Conv2d(input_shape[0], resblock_dim, kernel_size=3, stride=1, padding=1) #stub
@@ -73,7 +83,7 @@ class AlphaZeroNet(nn.Module):
         )
         # needs to be a resnet structure
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # stem
         x = F.relu(self.bn1(self.conv1(x)))
         
@@ -86,7 +96,11 @@ class AlphaZeroNet(nn.Module):
         value = self.value_head(x)
         return policy_logits, value
     
-    def predict_value(self, board_state, board_to_tensor_fn):
+    def predict_value(
+        self,
+        board_state: Any,
+        board_to_tensor_fn: Callable[[Any], np.ndarray],
+    ) -> tuple[np.ndarray, float]:
         """
         Helper for MCTS: 
         Takes a chess.Board -> Returns a float value (win prob).
